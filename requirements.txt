@@ -1,0 +1,32 @@
+# Core
+fastapi
+uvicorn[standard]
+websockets
+pydantic
+python-multipart
+
+# LLM Providers
+google-generativeai
+requests
+
+# Web Search and Content Reading
+ddgs
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Environment
+python-dotenv
+
+# Data science & ML (for code_executor)
+pandas
+numpy
+matplotlib
+scikit-learn
+seaborn
+scipy
+jupyter
+nbformat
+nbconvert
+xgboost
+lightgbm
+catboost
