@@ -1,0 +1,476 @@
+{
+  "providers": {
+    "gemini": {
+      "type": "gemini",
+      "env_api_key_var": "GEMINI_API_KEY",
+      "env_model_var": "LLM_MODEL",
+      "default_model_id": "gemini-2.5-pro"
+    },
+    "openrouter": {
+      "type": "openrouter",
+      "env_api_key_var": "OPENROUTER_API_KEY",
+      "env_model_var": "LLM_MODEL",
+      "default_model_id": "deepseek/deepseek-chat-v3.1:free"
+    },
+    "sherlock": {
+      "type": "sherlock",
+      "env_api_key_var": "SHERLOCK_API_KEY"
+    }
+  },
+  "models": [
+    {
+      "id": "gemini-2.5-pro",
+      "provider": "gemini",
+      "display_name": "Google Gemini 2.5 Pro (native)",
+      "group": "general",
+      "max_context_tokens": 2000000,
+      "benchmark_score": 9.0,
+      "user_reviews_score": 8.8,
+      "overall_power": 9.0,
+      "tags": ["gemini", "native"],
+      "is_default": true
+    },
+    {
+      "id": "deepseek/deepseek-chat-v3.1:free",
+      "provider": "openrouter",
+      "display_name": "DeepSeek: DeepSeek V3.1 (free)",
+      "group": "general",
+      "max_context_tokens": 163800,
+      "benchmark_score": 8.8,
+      "user_reviews_score": 8.9,
+      "overall_power": 8.8,
+      "tags": ["openrouter", "free"],
+      "is_default": true
+    },
+    {
+      "id": "tngtech/deepseek-r1t2-chimera:free",
+      "provider": "openrouter",
+      "display_name": "TNG: DeepSeek R1T2 Chimera (free)",
+      "group": "general",
+      "max_context_tokens": 163840,
+      "benchmark_score": 8.2,
+      "user_reviews_score": 8.5,
+      "overall_power": 8.3,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "kwaipilot/kat-coder-pro:free",
+      "provider": "openrouter",
+      "display_name": "Kwaipilot: KAT-Coder-Pro V1 (free)",
+      "group": "coding",
+      "max_context_tokens": 256000,
+      "benchmark_score": 7.8,
+      "user_reviews_score": 7.9,
+      "overall_power": 7.8,
+      "tags": ["openrouter", "free", "coding"]
+    },
+    {
+      "id": "z-ai/glm-4.5-air:free",
+      "provider": "openrouter",
+      "display_name": "Z.AI: GLM 4.5 Air (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 7.5,
+      "user_reviews_score": 7.6,
+      "overall_power": 7.5,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "tngtech/deepseek-r1t-chimera:free",
+      "provider": "openrouter",
+      "display_name": "TNG: DeepSeek R1T Chimera (free)",
+      "group": "general",
+      "max_context_tokens": 163840,
+      "benchmark_score": 8.1,
+      "user_reviews_score": 8.4,
+      "overall_power": 8.2,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "deepseek/deepseek-chat-v3-0324:free",
+      "provider": "openrouter",
+      "display_name": "DeepSeek: DeepSeek V3 0324 (free)",
+      "group": "general",
+      "max_context_tokens": 163840,
+      "benchmark_score": 8.7,
+      "user_reviews_score": 8.8,
+      "overall_power": 8.7,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "deepseek/deepseek-r1-0528:free",
+      "provider": "openrouter",
+      "display_name": "DeepSeek: R1 0528 (free)",
+      "group": "general",
+      "max_context_tokens": 163840,
+      "benchmark_score": 8.6,
+      "user_reviews_score": 8.7,
+      "overall_power": 8.6,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "qwen/qwen3-coder:free",
+      "provider": "openrouter",
+      "display_name": "Qwen: Qwen3 Coder 480B A35B (free)",
+      "group": "coding",
+      "max_context_tokens": 262000,
+      "benchmark_score": 9.4,
+      "user_reviews_score": 9.5,
+      "overall_power": 9.4,
+      "tags": ["openrouter", "free", "coding"]
+    },
+    {
+      "id": "google/gemma-3-27b-it:free",
+      "provider": "openrouter",
+      "display_name": "Google: Gemma 3 27B (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 8.0,
+      "user_reviews_score": 8.1,
+      "overall_power": 8.0,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "meta-llama/llama-3.3-70b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Meta: Llama 3.3 70B Instruct (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 8.5,
+      "user_reviews_score": 8.6,
+      "overall_power": 8.5,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "google/gemini-2.0-flash-exp:free",
+      "provider": "openrouter",
+      "display_name": "Google: Gemini 2.0 Flash Experimental (free)",
+      "group": "general",
+      "max_context_tokens": 1048576,
+      "benchmark_score": 9.2,
+      "user_reviews_score": 9.0,
+      "overall_power": 9.1,
+      "tags": ["openrouter", "free", "flash"]
+    },
+    {
+      "id": "meituan/longcat-flash-chat:free",
+      "provider": "openrouter",
+      "display_name": "Meituan: LongCat Flash Chat (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 7.4,
+      "user_reviews_score": 7.5,
+      "overall_power": 7.4,
+      "tags": ["openrouter", "free", "flash"]
+    },
+    {
+      "id": "deepseek/deepseek-r1:free",
+      "provider": "openrouter",
+      "display_name": "DeepSeek: R1 (free)",
+      "group": "general",
+      "max_context_tokens": 163840,
+      "benchmark_score": 8.4,
+      "user_reviews_score": 8.5,
+      "overall_power": 8.4,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "microsoft/mai-ds-r1:free",
+      "provider": "openrouter",
+      "display_name": "Microsoft: MAI DS R1 (free)",
+      "group": "general",
+      "max_context_tokens": 163840,
+      "benchmark_score": 8.3,
+      "user_reviews_score": 8.2,
+      "overall_power": 8.2,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "openai/gpt-oss-20b:free",
+      "provider": "openrouter",
+      "display_name": "OpenAI: gpt-oss-20b (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 7.9,
+      "user_reviews_score": 8.0,
+      "overall_power": 7.9,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "qwen/qwen3-235b-a22b:free",
+      "provider": "openrouter",
+      "display_name": "Qwen: Qwen3 235B A22B (free)",
+      "group": "general",
+      "max_context_tokens": 40960,
+      "benchmark_score": 9.3,
+      "user_reviews_score": 9.4,
+      "overall_power": 9.3,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "nvidia/nemotron-nano-12b-v2-vl:free",
+      "provider": "openrouter",
+      "display_name": "NVIDIA: Nemotron Nano 12B 2 VL (free)",
+      "group": "general",
+      "max_context_tokens": 128000,
+      "benchmark_score": 7.7,
+      "user_reviews_score": 7.8,
+      "overall_power": 7.7,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "deepseek/deepseek-r1-distill-llama-70b:free",
+      "provider": "openrouter",
+      "display_name": "DeepSeek: R1 Distill Llama 70B (free)",
+      "group": "general",
+      "max_context_tokens": 8192,
+      "benchmark_score": 7.6,
+      "user_reviews_score": 7.7,
+      "overall_power": 7.6,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "deepseek/deepseek-r1-0528-qwen3-8b:free",
+      "provider": "openrouter",
+      "display_name": "DeepSeek: DeepSeek R1 0528 Qwen3 8B (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 7.2,
+      "user_reviews_score": 7.3,
+      "overall_power": 7.2,
+      "tags": ["openrouter", "free"]
+    },
+    
+    {
+      "id": "qwen/qwen3-14b:free",
+      "provider": "openrouter",
+      "display_name": "Qwen: Qwen3 14B (free)",
+      "group": "general",
+      "max_context_tokens": 40960,
+      "benchmark_score": 8.1,
+      "user_reviews_score": 8.2,
+      "overall_power": 8.1,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "mistralai/mistral-nemo:free",
+      "provider": "openrouter",
+      "display_name": "Mistral: Mistral Nemo (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 7.9,
+      "user_reviews_score": 8.0,
+      "overall_power": 7.9,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "mistralai/mistral-small-3.1-24b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Mistral: Mistral Small 3.1 24B (free)",
+      "group": "general",
+      "max_context_tokens": 96000,
+      "benchmark_score": 8.2,
+      "user_reviews_score": 8.3,
+      "overall_power": 8.2,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "alibaba/tongyi-deepresearch-30b-a3b:free",
+      "provider": "openrouter",
+      "display_name": "Tongyi DeepResearch 30B A3B (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 7.8,
+      "user_reviews_score": 7.9,
+      "overall_power": 7.8,
+      "tags": ["openrouter", "free", "research"]
+    },
+    {
+      "id": "mistralai/mistral-small-3.2-24b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Mistral: Mistral Small 3.2 24B (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 8.3,
+      "user_reviews_score": 8.4,
+      "overall_power": 8.3,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "qwen/qwen3-30b-a3b:free",
+      "provider": "openrouter",
+      "display_name": "Qwen: Qwen3 30B A3B (free)",
+      "group": "general",
+      "max_context_tokens": 40960,
+      "benchmark_score": 8.4,
+      "user_reviews_score": 8.5,
+      "overall_power": 8.4,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "mistralai/mistral-7b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Mistral: Mistral 7B Instruct (free)",
+      "group": "general",
+      "max_context_tokens": 32768,
+      "benchmark_score": 6.8,
+      "user_reviews_score": 7.0,
+      "overall_power": 6.9,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+      "provider": "openrouter",
+      "display_name": "Venice: Uncensored (free)",
+      "group": "general",
+      "max_context_tokens": 32768,
+      "benchmark_score": 7.5,
+      "user_reviews_score": 7.6,
+      "overall_power": 7.5,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "nvidia/nemotron-nano-9b-v2:free",
+      "provider": "openrouter",
+      "display_name": "NVIDIA: Nemotron Nano 9B V2 (free)",
+      "group": "general",
+      "max_context_tokens": 128000,
+      "benchmark_score": 7.3,
+      "user_reviews_score": 7.4,
+      "overall_power": 7.3,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "qwen/qwen-2.5-72b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Qwen2.5 72B Instruct (free)",
+      "group": "general",
+      "max_context_tokens": 32768,
+      "benchmark_score": 8.6,
+      "user_reviews_score": 8.7,
+      "overall_power": 8.6,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "qwen/qwen2.5-vl-32b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Qwen: Qwen2.5 VL 32B Instruct (free)",
+      "group": "general",
+      "max_context_tokens": 16384,
+      "benchmark_score": 7.7,
+      "user_reviews_score": 7.8,
+      "overall_power": 7.7,
+      "tags": ["openrouter", "free", "vision"]
+    },
+    {
+      "id": "nousresearch/hermes-3-llama-3.1-405b:free",
+      "provider": "openrouter",
+      "display_name": "Nous: Hermes 3 405B Instruct (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 9.5,
+      "user_reviews_score": 9.3,
+      "overall_power": 9.4,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "qwen/qwen-2.5-coder-32b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Qwen2.5 Coder 32B Instruct (free)",
+      "group": "coding",
+      "max_context_tokens": 32768,
+      "benchmark_score": 8.7,
+      "user_reviews_score": 8.8,
+      "overall_power": 8.7,
+      "tags": ["openrouter", "free", "coding"]
+    },
+    {
+      "id": "moonshotai/kimi-k2:free",
+      "provider": "openrouter",
+      "display_name": "MoonshotAI: Kimi K2 0711 (free)",
+      "group": "general",
+      "max_context_tokens": 32768,
+      "benchmark_score": 9.0,
+      "user_reviews_score": 9.1,
+      "overall_power": 9.0,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "mistralai/mistral-small-24b-instruct-2501:free",
+      "provider": "openrouter",
+      "display_name": "Mistral: Mistral Small 3 (free)",
+      "group": "general",
+      "max_context_tokens": 32768,
+      "benchmark_score": 8.0,
+      "user_reviews_score": 8.1,
+      "overall_power": 8.0,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "arliai/qwq-32b-arliai-rpr-v1:free",
+      "provider": "openrouter",
+      "display_name": "ArliAI: QwQ 32B RpR v1 (free)",
+      "group": "general",
+      "max_context_tokens": 32768,
+      "benchmark_score": 7.4,
+      "user_reviews_score": 7.5,
+      "overall_power": 7.4,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "meta-llama/llama-3.2-3b-instruct:free",
+      "provider": "openrouter",
+      "display_name": "Meta: Llama 3.2 3B Instruct (free)",
+      "group": "general",
+      "max_context_tokens": 131072,
+      "benchmark_score": 6.5,
+      "user_reviews_score": 6.7,
+      "overall_power": 6.6,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "qwen/qwen3-4b:free",
+      "provider": "openrouter",
+      "display_name": "Qwen: Qwen3 4B (free)",
+      "group": "general",
+      "max_context_tokens": 40960,
+      "benchmark_score": 6.9,
+      "user_reviews_score": 7.0,
+      "overall_power": 6.9,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "agentica-org/deepcoder-14b-preview:free",
+      "provider": "openrouter",
+      "display_name": "Agentica: Deepcoder 14B Preview (free)",
+      "group": "coding",
+      "max_context_tokens": 96000,
+      "benchmark_score": 7.6,
+      "user_reviews_score": 7.7,
+      "overall_power": 7.6,
+      "tags": ["openrouter", "free", "coding"]
+    },
+    {
+      "id": "openrouter/sherlock-dash-alpha",
+      "provider": "openrouter",
+      "display_name": "Sherlock Dash Alpha",
+      "group": "general",
+      "max_context_tokens": 1840000,
+      "benchmark_score": 9.1,
+      "user_reviews_score": 9.1,
+      "overall_power": 9.1,
+      "tags": ["openrouter", "free"]
+    },
+    {
+      "id": "openrouter/sherlock-think-alpha",
+      "provider": "openrouter",
+      "display_name": "Sherlock Think Alpha",
+      "group": "general",
+      "max_context_tokens": 1840000,
+      "benchmark_score": 9.1,
+      "user_reviews_score": 9.1,
+      "overall_power": 9.1,
+      "tags": ["openrouter", "free"]
+    }
+  ]
+}
