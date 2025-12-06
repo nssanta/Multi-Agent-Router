@@ -141,4 +141,10 @@ build/
 
 # Optional: Python version manager
 .python-version
-# Documentation
+
+# Documentation with sensitive planning info - hide all except public ones
+*.md
+!README.md
+!PR_DOC.md
+!CONTRIBUTING.md
+!LICENSE.md

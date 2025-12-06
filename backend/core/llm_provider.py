@@ -356,6 +356,118 @@ class OpenRouterProvider(BaseLLMProvider):
                                 yield delta['content']
                     except json.JSONDecodeError:
                         pass
+    
+    def generate_with_tools(
+        self,
+        messages: list,
+        tools: list = None,
+        tool_choice: str = "auto",
+        **kwargs
+    ) -> dict:
+        """
+        Генерация с поддержкой native tool calling
+        
+        Args:
+            messages: Список сообщений в OpenAI формате
+            tools: Список tool definitions
+            tool_choice: "auto", "none", "required" или конкретный tool
+            **kwargs: Дополнительные параметры
+            
+        Returns:
+            Dict с content, tool_calls, finish_reason, usage
+        """
+        import requests
+        
+        temperature = kwargs.get('temperature', 0.7)
+        
+        # Формируем запрос
+        request_body = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+        }
+        
+        # Добавляем tools если есть
+        if tools:
+            request_body["tools"] = tools
+            request_body["tool_choice"] = tool_choice
+        
+        response = requests.post(
+            f"{self.base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json=request_body
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        # Записываем usage
+        usage = data.get("usage") or {}
+        usage_dict = {
+            "prompt_tokens": usage.get("prompt_tokens"),
+            "completion_tokens": usage.get("completion_tokens"),
+            "total_tokens": usage.get("total_tokens"),
+        }
+        self._record_usage(usage_dict)
+        
+        # Парсим ответ
+        choice = data.get("choices", [{}])[0]
+        message = choice.get("message", {})
+        
+        return {
+            "content": message.get("content", ""),
+            "tool_calls": message.get("tool_calls", []),
+            "finish_reason": choice.get("finish_reason", ""),
+            "usage": usage_dict,
+            "raw_response": data
+        }
+    
+    def chat(
+        self,
+        messages: list,
+        **kwargs
+    ) -> str:
+        """
+        Чат с историей сообщений
+        
+        Args:
+            messages: Список сообщений [{role, content}, ...]
+            **kwargs: Дополнительные параметры
+            
+        Returns:
+            Ответ модели (строка)
+        """
+        import requests
+        
+        temperature = kwargs.get('temperature', 0.7)
+        
+        response = requests.post(
+            f"{self.base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature,
+            }
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        # usage
+        usage = data.get("usage") or {}
+        usage_dict = {
+            "prompt_tokens": usage.get("prompt_tokens"),
+            "completion_tokens": usage.get("completion_tokens"),
+            "total_tokens": usage.get("total_tokens"),
+        }
+        self._record_usage(usage_dict)
+        
+        return data["choices"][0]["message"]["content"]
 
 
 def get_llm_provider(provider_type: str, **config) -> BaseLLMProvider:

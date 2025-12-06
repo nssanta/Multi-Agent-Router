@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { User, Bot, File, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Message as MessageType } from '../../types';
 
@@ -7,158 +8,114 @@ interface MessageProps {
   message: MessageType;
 }
 
-// Функция для разделения контента на части
-const parseMessageContent = (content: string) => {
-  // Паттерны для ReAct формата (русский и английский)
-  const reactPatterns = {
-    thought: /\*\*(?:Мысль|Thought):\*\*\s*([^\n]+(?:\n(?!\*\*(?:Действие|Action)).*)*)/gi,
-    action: /\*\*(?:Действие|Action):\*\*\s*([^\n]+)/gi,
-    params: /\*\*(?:Параметры|Parameters):\*\*\s*```(?:json)?\s*([\s\S]*?)```/gi,
-  };
-
-  // Английские паттерны
-  const thoughtPattern = /\*\*Thought:\*\*[\s\S]*?(?=\n\n\*\*|$)/gi;
-  const analysisPattern = /Analysis[\s\S]*?(?=\n\nFinal Answer|$)/gi;
-
-  // Паттерны поиска
-  const searchPatterns = [
-    /Quick Search:[\s\S]*?(?=📖|$)/gi,
-    /🔍 \*\*Search Results\*\*[\s\S]*?(?=📖|$)/gi,
-    /🔍 \*\*Smart Search Results\*\*[\s\S]*?(?=📖|$)/gi,
-    /📖 \*\*Read [\s\S]*?(?=\n\n\n|$)/gi,
-    /📖 FULL PAGE CONTENT[\s\S]*?(?=\n\n\n|$)/gi,
+// Универсальная функция извлечения чистого ответа
+const extractFinalAnswer = (content: string): string | null => {
+  // 1. Ищем JSON в разных форматах
+  const jsonPatterns = [
+    // {"message": "..."} напрямую в тексте
+    /\{"message":\s*"([^"]+(?:\\.[^"]*)*)"[^}]*\}/,
+    // В markdown code block
+    /```(?:json)?\s*\{\s*"message":\s*"([^"]+(?:\\.[^"]*)*)"[^}]*\}\s*```/,
+    // С Параметры: или Parameters:
+    /(?:Параметры|Parameters):\s*\{"message":\s*"([^"]+(?:\\.[^"]*)*)"[^}]*\}/,
+    /(?:Параметры|Parameters):\s*```(?:json)?\s*\{\s*"message":\s*"([^"]+(?:\\.[^"]*)*)"[^}]*\}/,
   ];
 
-  // Паттерн источников
-  const sourcesPattern = /\*\*📚 Sources:\*\*[\s\S]*$/gi;
+  for (const pattern of jsonPatterns) {
+    const match = content.match(pattern);
+    if (match && match[1]) {
+      // Декодируем escape-последовательности
+      return match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+  }
 
+  // 2. Пробуем парсить любой JSON объект в тексте
+  const jsonObjMatch = content.match(/\{[^{}]*"message"\s*:\s*"[^"]+[^{}]*\}/);
+  if (jsonObjMatch) {
+    try {
+      const parsed = JSON.parse(jsonObjMatch[0]);
+      if (parsed.message) {
+        return parsed.message;
+      }
+    } catch {
+      // Не валидный JSON
+    }
+  }
+
+  return null;
+};
+
+// Функция для разделения контента на части
+const parseMessageContent = (content: string) => {
   let thoughts = '';
   let actions = '';
-  let searchSteps = '';
+  let toolCalls = '';
   let sources = '';
   let finalAnswer = content;
 
-  // 1. Извлечь ReAct reasoning (русский формат)
-  let reactReasoning = '';
+  // 1. Извлекаем tool calls (JSON в code blocks)
+  const toolCallPattern = /```(?:json)?\s*\{[^`]*"tool"\s*:\s*"[^"]+[^`]*\}\s*```/gi;
+  const toolCallMatches = content.match(toolCallPattern);
+  if (toolCallMatches) {
+    toolCalls = toolCallMatches.join('\n');
+  }
 
-  // Мысли
-  const thoughtMatches = content.match(reactPatterns.thought);
+  // 2. Извлекаем ReAct мысли
+  const thoughtPattern = /\*\*(?:Мысль|Thought):\*\*\s*([^\n]+)/gi;
+  const thoughtMatches = content.match(thoughtPattern);
   if (thoughtMatches) {
-    reactReasoning += thoughtMatches.join('\n\n');
-    thoughts = thoughtMatches.join('\n\n');
+    thoughts = thoughtMatches.join('\n');
   }
 
-  // Действия
-  const actionMatches = content.match(reactPatterns.action);
-  if (actionMatches) {
-    reactReasoning += '\n\n' + actionMatches.join('\n');
-    actions = actionMatches.join('\n');
-  }
-
-  // Параметры - извлечь сообщение из JSON если есть
-  const paramMatches = content.match(reactPatterns.params);
-  if (paramMatches) {
-    for (const match of paramMatches) {
-      reactReasoning += '\n\n' + match;
-
-      // Попробовать извлечь "message" из JSON
-      try {
-        const jsonMatch = match.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (jsonMatch) {
-          const jsonStr = jsonMatch[1].trim();
-          const parsed = JSON.parse(jsonStr);
-          if (parsed.message) {
-            // Это финальный ответ!
-            finalAnswer = parsed.message;
-          }
-        }
-      } catch {
-        // Не JSON, игнорируем
-      }
-    }
-  }
-
-  // 2. Английские паттерны для thoughts
-  const engThoughtMatches = content.match(thoughtPattern) || content.match(analysisPattern);
-  if (engThoughtMatches) {
-    thoughts += '\n\n' + engThoughtMatches.join('\n\n');
-  }
-
-  // 3. Поисковые шаги
-  searchPatterns.forEach(pattern => {
-    const matches = content.match(pattern);
-    if (matches) {
-      matches.forEach(match => {
-        searchSteps += match + '\n\n';
-      });
-    }
-  });
-
-  // 4. Источники
+  // 3. Извлекаем источники
+  const sourcesPattern = /\*\*📚 Sources:\*\*[\s\S]*$/gi;
   const sourcesMatch = content.match(sourcesPattern);
   if (sourcesMatch) {
     sources = sourcesMatch[0];
   }
 
-  // 5. Дополнительные паттерны для reasoning без форматирования
-  const additionalReasoningPatterns = [
-    // "Пользователь приветствует..." - начало анализа
-    /^Пользователь\s+[^\n]+[\s\S]*?(?=Ответить пользователю|Здравствуйте|Привет|$)/i,
-    // "Ответить пользователю" - действие
-    /Ответить пользователю\s*/gi,
-    // "Наблюдение:" без звёздочек
-    /Наблюдение:\s*[^\n]+/gi,
-    // "Я успешно..." - самоанализ
-    /Я успешно[^\n]+/gi,
-  ];
+  // 4. Очищаем finalAnswer от всего технического
+  finalAnswer = content
+    // Убираем JSON tool calls в code blocks
+    .replace(/```(?:json)?\s*\{[^`]*"tool"\s*:\s*"[^"]+[^`]*\}\s*```/gi, '')
+    // Убираем inline tool calls
+    .replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{[^}]+\}\s*\}/gi, '')
+    // Убираем ReAct формат с markdown
+    .replace(/\*\*(?:Мысль|Thought):\*\*[^\n]*/gi, '')
+    .replace(/\*\*(?:Действие|Action):\*\*[^\n]*/gi, '')
+    .replace(/\*\*(?:Параметры|Parameters):\*\*\s*(?:```(?:json)?[\s\S]*?```|\{[\s\S]*?\})/gi, '')
+    .replace(/\*\*(?:Наблюдение|Observation):\*\*[\s\S]*?(?=\*\*|$)/gi, '')
+    // Убираем результаты выполнения (они будут показаны отдельно)
+    .replace(/## Результаты выполнения:[\s\S]*$/gi, '')
+    // Убираем верификацию (она будет показана отдельно)
+    .replace(/## Верификация кода:[\s\S]*$/gi, '')
+    // Убираем подписи к файлам перед tool calls
+    .replace(/(?:Файл \d+|Сначала создам|Теперь создам|Создам файл)[^:]*:\s*$/gim, '')
+    // Убираем пустые code blocks
+    .replace(/```\s*```/g, '')
+    // Убираем лишние переносы
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
-  // 6. Если не нашли JSON message, очищаем finalAnswer от ReAct формата
-  if (finalAnswer === content) {
-    // Убираем все ReAct паттерны (с markdown)
-    finalAnswer = content
-      .replace(/\*\*(?:Мысль|Thought):\*\*[\s\S]*?(?=\*\*(?:Действие|Action)|\n\n\*\*|$)/gi, '')
-      .replace(/\*\*(?:Действие|Action):\*\*[^\n]*/gi, '')
-      .replace(/\*\*(?:Параметры|Parameters):\*\*\s*```(?:json)?[\s\S]*?```/gi, '')
-      .replace(/\*\*(?:Наблюдение|Observation):\*\*[\s\S]*?(?=\*\*|$)/gi, '');
-
-    // Убираем reasoning без markdown
-    additionalReasoningPatterns.forEach(pattern => {
-      finalAnswer = finalAnswer.replace(pattern, '');
-    });
-
-    // Убираем поиск и источники
-    searchPatterns.forEach(pattern => {
-      finalAnswer = finalAnswer.replace(pattern, '');
-    });
-    if (sources) {
-      finalAnswer = finalAnswer.replace(sources, '');
-    }
-
-    // Очистить пустые строки
-    finalAnswer = finalAnswer.replace(/\n{3,}/g, '\n\n').trim();
+  // 5. Если после очистки остался только заголовок без контента
+  if (finalAnswer.length < 20 && toolCalls) {
+    // Есть tool calls но нет текста - показываем статус
+    finalAnswer = '✅ Выполняю задачу...';
   }
 
-  // Если ничего не осталось, показать оригинал без ReAct
-  if (!finalAnswer || finalAnswer.length < 5) {
-    finalAnswer = content.replace(/\*\*(?:Мысль|Thought|Действие|Action|Параметры|Parameters):\*\*/gi, '')
-      .replace(/```json[\s\S]*?```/gi, '')
-      .trim() || content;
-  }
-
+  // 6. Проверяем hasReasoning - только если есть МЫСЛИ (не tool calls)
+  const hasReasoning = Boolean(thoughts);
 
   return {
-    finalAnswer: finalAnswer.trim(),
     thoughts: thoughts.trim(),
-    actions: actions.trim(),
-    searchSteps: searchSteps.trim(),
+    actions: toolCalls.trim(), // Используем toolCalls вместо actions
+    searchSteps: '',
     sources: sources.trim(),
-    hasThoughts: thoughts.length > 0 || actions.length > 0,
-    hasSearchSteps: searchSteps.length > 0,
-    hasSources: sources.length > 0,
-    hasReactReasoning: reactReasoning.length > 0,
-    reactReasoning: reactReasoning.trim(),
+    finalAnswer: finalAnswer.trim(),
+    hasReasoning,
   };
 };
+
 
 export const Message: React.FC<MessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
@@ -186,12 +143,12 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
           ) : (
             <>
               {/* Final Answer */}
-              <ReactMarkdown className="markdown">
+              <ReactMarkdown className="markdown" remarkPlugins={[remarkGfm]}>
                 {parsed?.finalAnswer || message.content}
               </ReactMarkdown>
 
               {/* Collapsible ReAct Reasoning */}
-              {parsed?.hasThoughts && (
+              {parsed?.hasReasoning && (
                 <div className="mt-3 pt-3 border-t border-dark-border/50">
                   <button
                     onClick={() => setShowThoughts(!showThoughts)}
@@ -207,8 +164,8 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
 
                   {showThoughts && (
                     <div className="mt-2 p-3 rounded-lg bg-dark-bg/50 border border-dark-border/30 overflow-x-auto">
-                      <ReactMarkdown className="markdown text-xs text-dark-muted leading-relaxed">
-                        {parsed.reactReasoning || parsed.thoughts}
+                      <ReactMarkdown className="markdown text-xs text-dark-muted leading-relaxed" remarkPlugins={[remarkGfm]}>
+                        {parsed.thoughts}
                       </ReactMarkdown>
                     </div>
                   )}
@@ -216,7 +173,7 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
               )}
 
               {/* Collapsible Search Steps */}
-              {parsed?.hasSearchSteps && (
+              {parsed?.searchSteps && (
                 <div className="mt-2 pt-2">
                   <button
                     onClick={() => setShowSearch(!showSearch)}
@@ -232,7 +189,7 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
 
                   {showSearch && (
                     <div className="mt-2 p-3 rounded-lg bg-dark-bg/50 border border-dark-border/30 overflow-x-auto">
-                      <ReactMarkdown className="markdown text-xs text-dark-muted leading-relaxed">
+                      <ReactMarkdown className="markdown text-xs text-dark-muted leading-relaxed" remarkPlugins={[remarkGfm]}>
                         {parsed.searchSteps}
                       </ReactMarkdown>
                     </div>
@@ -241,7 +198,7 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
               )}
 
               {/* Collapsible Sources */}
-              {parsed?.hasSources && (
+              {parsed?.sources && (
                 <div className="mt-2 border-t border-dark-border pt-2">
                   <button
                     onClick={() => setShowSources(!showSources)}

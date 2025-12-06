@@ -151,6 +151,16 @@ class WriteFileTool(BaseTool):
             if not actual_path:
                 return ToolResult.error("Missing required parameter: path or file_path")
             
+            # Декодируем escape-последовательности в content
+            # LLM часто передаёт \\n вместо реальных newlines
+            if isinstance(content, str):
+                # Заменяем литеральные escape-последовательности на реальные
+                content = content.replace('\\n', '\n')
+                content = content.replace('\\t', '\t')
+                content = content.replace('\\r', '\r')
+                content = content.replace('\\"', '"')
+                content = content.replace("\\'", "'")
+            
             # Резолвим путь
             resolved_path = self._resolve_path(actual_path)
             
@@ -489,4 +499,252 @@ class ApplyDiffTool(BaseTool):
             return p
         if self.session_path:
             return Path(self.session_path) / "workspace" / path
+        return p
+
+
+@register_tool
+class RunCodeTool(BaseTool):
+    """Выполнение Python кода"""
+    
+    name = "run_code"
+    description = "Выполнить Python код и получить результат. Используется для тестирования и вычислений."
+    parameters = {
+        "code": {
+            "type": "string",
+            "description": "Python код для выполнения"
+        },
+        "timeout": {
+            "type": "integer",
+            "description": "Таймаут в секундах (по умолчанию 30)"
+        }
+    }
+    required_params = ["code"]
+    agent_types = ["coder", "mle", "ds"]
+    
+    def execute(self, code: str, timeout: int = 30, **kwargs) -> ToolResult:
+        """Выполнить Python код"""
+        import subprocess
+        import sys
+        import tempfile
+        import re
+        
+        try:
+            # Умная обработка: если передана shell команда вместо Python кода
+            code = code.strip()
+            
+            # Паттерн для "python file.py" или "python3 file.py"
+            shell_pattern = r'^python[3]?\s+([^\s]+\.py)(?:\s+(.*))?$'
+            match = re.match(shell_pattern, code)
+            if match:
+                filename = match.group(1)
+                args = match.group(2) or ''
+                # Преобразуем в Python exec
+                if args:
+                    code = f"import sys; sys.argv = ['{filename}', '{args}']; exec(open('{filename}').read())"
+                else:
+                    code = f"exec(open('{filename}').read())"
+            
+            # Создаём временный файл
+            with tempfile.NamedTemporaryFile(
+                mode="w", 
+                suffix=".py", 
+                delete=False,
+                encoding="utf-8"
+            ) as f:
+                f.write(code)
+                temp_file = f.name
+            
+            try:
+                # Выполняем код
+                result = subprocess.run(
+                    [sys.executable, temp_file],
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    cwd=self._get_working_dir()
+                )
+                
+                output = result.stdout
+                error = result.stderr
+                exit_code = result.returncode
+                
+                if exit_code == 0:
+                    return ToolResult.success(
+                        data={
+                            "output": output,
+                            "exit_code": exit_code
+                        },
+                        message=f"Code executed successfully",
+                        metadata={"stderr": error} if error else {}
+                    )
+                else:
+                    return ToolResult.error(
+                        f"Code failed with exit code {exit_code}",
+                        data={
+                            "output": output,
+                            "error": error,
+                            "exit_code": exit_code
+                        }
+                    )
+                    
+            finally:
+                # Удаляем временный файл
+                try:
+                    os.unlink(temp_file)
+                except:
+                    pass
+                    
+        except subprocess.TimeoutExpired:
+            return ToolResult.error(f"Code execution timed out after {timeout} seconds")
+        except Exception as e:
+            logger.exception("Error executing code")
+            return ToolResult.error(f"Error executing code: {str(e)}")
+    
+    def _get_working_dir(self) -> str:
+        """Получить рабочую директорию"""
+        if self.session_path:
+            workspace = Path(self.session_path) / "workspace"
+            workspace.mkdir(parents=True, exist_ok=True)
+            return str(workspace)
+        return os.getcwd()
+
+
+@register_tool
+class SearchFilesTool(BaseTool):
+    """Поиск по содержимому файлов"""
+    
+    name = "search_files"
+    description = "Поиск текста или паттерна в файлах. Возвращает совпадения с контекстом."
+    parameters = {
+        "pattern": {
+            "type": "string",
+            "description": "Текст или regex паттерн для поиска"
+        },
+        "path": {
+            "type": "string",
+            "description": "Директория для поиска (по умолчанию workspace)"
+        },
+        "file_pattern": {
+            "type": "string",
+            "description": "Glob паттерн для фильтра файлов (например *.py)"
+        },
+        "is_regex": {
+            "type": "boolean",
+            "description": "Интерпретировать pattern как regex (по умолчанию False)"
+        }
+    }
+    required_params = ["pattern"]
+    agent_types = ["coder", "mle", "ds"]
+    
+    def execute(
+        self, 
+        pattern: str, 
+        path: str = ".",
+        file_pattern: str = "*",
+        is_regex: bool = False,
+        **kwargs
+    ) -> ToolResult:
+        """Поиск в файлах"""
+        import re
+        import fnmatch
+        
+        try:
+            search_dir = self._resolve_path(path)
+            
+            if not search_dir.exists():
+                return ToolResult.error(f"Directory not found: {path}")
+            
+            # Компилируем паттерн
+            if is_regex:
+                try:
+                    regex = re.compile(pattern, re.IGNORECASE)
+                except re.error as e:
+                    return ToolResult.error(f"Invalid regex pattern: {e}")
+            else:
+                # Экранируем для literal search
+                regex = re.compile(re.escape(pattern), re.IGNORECASE)
+            
+            matches = []
+            files_searched = 0
+            
+            # Ищем файлы
+            for file_path in search_dir.rglob("*"):
+                if not file_path.is_file():
+                    continue
+                
+                # Проверяем glob фильтр
+                if file_pattern != "*" and not fnmatch.fnmatch(file_path.name, file_pattern):
+                    continue
+                
+                # Пропускаем бинарные файлы
+                if self._is_binary(file_path):
+                    continue
+                
+                files_searched += 1
+                
+                try:
+                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                        lines = f.readlines()
+                    
+                    for line_num, line in enumerate(lines, 1):
+                        if regex.search(line):
+                            matches.append({
+                                "file": str(file_path.relative_to(search_dir)),
+                                "line": line_num,
+                                "content": line.rstrip()[:200],  # Ограничиваем
+                                "context_before": lines[max(0, line_num-2):line_num-1] if line_num > 1 else [],
+                                "context_after": lines[line_num:min(len(lines), line_num+1)]
+                            })
+                            
+                            # Ограничиваем количество совпадений
+                            if len(matches) >= 50:
+                                break
+                    
+                    if len(matches) >= 50:
+                        break
+                        
+                except Exception:
+                    continue
+            
+            if not matches:
+                return ToolResult.success(
+                    data=[],
+                    message=f"No matches found in {files_searched} files"
+                )
+            
+            return ToolResult.success(
+                data=matches,
+                message=f"Found {len(matches)} matches in {files_searched} files",
+                metadata={
+                    "files_searched": files_searched,
+                    "match_count": len(matches)
+                }
+            )
+            
+        except Exception as e:
+            logger.exception("Error searching files")
+            return ToolResult.error(f"Error searching files: {str(e)}")
+    
+    def _is_binary(self, file_path: Path) -> bool:
+        """Проверить, является ли файл бинарным"""
+        binary_extensions = {
+            '.pyc', '.pyo', '.so', '.dll', '.exe', '.bin',
+            '.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg',
+            '.mp3', '.mp4', '.avi', '.mkv', '.wav',
+            '.zip', '.tar', '.gz', '.rar', '.7z',
+            '.pdf', '.doc', '.docx', '.xls', '.xlsx',
+            '.woff', '.woff2', '.ttf', '.eot'
+        }
+        return file_path.suffix.lower() in binary_extensions
+    
+    def _resolve_path(self, path: str) -> Path:
+        """Резолвим путь"""
+        p = Path(path)
+        if p.is_absolute():
+            return p
+        if self.session_path:
+            workspace = Path(self.session_path) / "workspace"
+            if path == "." or path == "":
+                return workspace
+            return workspace / path
         return p

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Agent System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        #chat {
+            border: 1px solid #ccc;
+            height: 400px;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user {
+            background: #e3f2fd;
+            text-align: right;
+        }
+        .assistant {
+            background: #f5f5f5;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+        }
+        #input {
+            width: 70%;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Agent System</h1>
+    
+    <div>
+        <label>Agent:</label>
+        <select id="agent-select">
+            <option value="dialog">Dialog</option>
+            <option value="mle" disabled>MLE (Coming soon)</option>
+            <option value="ds" disabled>DS (Coming soon)</option>
+        </select>
+        <button onclick="createSession()">New Session</button>
+        <span id="session-info"></span>
+    </div>
+    
+    <div id="chat"></div>
+    
+    <div>
+        <input type="text" id="input" placeholder="Type your message..." onkeypress="if(event.key==='Enter') sendMessage()">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    
+    <div>
+        <input type="file" id="file-upload">
+        <button onclick="uploadFile()">Upload File</button>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let agentType = "dialog";
+        const API_URL = "http://localhost:8000/api";
+        
+        async function createSession() {
+            agentType = document.getElementById("agent-select").value;
+            
+            const response = await fetch(`${API_URL}/sessions`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({agent_type: agentType, user_id: "test_user"})
+            });
+            
+            const data = await response.json();
+            sessionId = data.session_id;
+            
+            document.getElementById("session-info").innerText = `Session: ${sessionId.substring(0, 8)}...`;
+            document.getElementById("chat").innerHTML = "";
+        }
+        
+        async function sendMessage() {
+            if (!sessionId) {
+                alert("Create a session first!");
+                return;
+            }
+            
+            const input = document.getElementById("input");
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Show user message
+            addMessage("user", message);
+            input.value = "";
+            
+            // Send to API
+            try {
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        agent_type: agentType,
+                        message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Unknown API error');
+                }
+                
+                const data = await response.json();
+                addMessage("assistant", data.response);
+            } catch (error) {
+                addMessage("assistant", `Error: ${error.message}`);
+                alert(`API Error: ${error.message}`);
+            }
+        }
+        
+        function addMessage(role, content) {
+            const chat = document.getElementById("chat");
+            const div = document.createElement("div");
+            div.className = `message ${role}`;
+            div.innerText = content;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+        
+        async function uploadFile() {
+            if (!sessionId) {
+                alert("Create a session first!");
+                return;
+            }
+            
+            const fileInput = document.getElementById("file-upload");
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append("file", file);
+            
+            try {
+                const response = await fetch(`${API_URL}/upload/${agentType}/${sessionId}`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'File upload failed');
+                }
+
+                alert(`File uploaded: ${file.name}`);
+            } catch (error) {
+                alert(`Upload Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -6,7 +6,7 @@ from .web_reader import read_url, read_multiple_urls, format_read_results, get_w
 
 # Модульная система инструментов
 from .base import BaseTool, ToolResult, ToolRegistry, tool_registry, register_tool
-from .file_tools import ReadFileTool, WriteFileTool, ListDirTool, DiffTool, ApplyDiffTool
+from .file_tools import ReadFileTool, WriteFileTool, ListDirTool, DiffTool, ApplyDiffTool, RunCodeTool, SearchFilesTool
 
 # Notebook инструменты
 from .notebook_tools import (
@@ -41,6 +41,8 @@ __all__ = [
     'ListDirTool',
     'DiffTool',
     'ApplyDiffTool',
+    'RunCodeTool',
+    'SearchFilesTool',
     # Notebook инструменты
     'NotebookListCellsTool',
     'NotebookReadCellTool',

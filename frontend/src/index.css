@@ -6,35 +6,37 @@
   body {
     @apply bg-dark-bg text-dark-text;
   }
-  
+
   /* Safe area for mobile devices */
   .safe-area-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
-  
+
   /* Prevent iOS zoom on input focus */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     font-size: 16px;
   }
 }
+
 @layer components {
   .btn {
     @apply px-4 py-2 rounded-lg font-medium transition-colors;
   }
-  
+
   .btn-primary {
     @apply bg-blue-600 hover:bg-blue-700 text-white;
   }
-  
+
   .btn-secondary {
     @apply bg-dark-surface hover:bg-dark-border text-dark-text border border-dark-border;
   }
-  
+
   .input {
-    @apply w-full px-4 py-2 bg-dark-surface border border-dark-border rounded-lg 
-           text-dark-text placeholder-dark-muted focus:outline-none focus:border-blue-500;
+    @apply w-full px-4 py-2 bg-dark-surface border border-dark-border rounded-lg text-dark-text placeholder-dark-muted focus:outline-none focus:border-blue-500;
   }
-  
+
   .card {
     @apply bg-dark-surface border border-dark-border rounded-lg p-4;
   }
@@ -57,6 +59,10 @@
 /* Markdown styling in messages */
 .markdown {
   @apply space-y-3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .markdown h1 {
@@ -75,7 +81,8 @@
   @apply leading-relaxed;
 }
 
-.markdown ul, .markdown ol {
+.markdown ul,
+.markdown ol {
   @apply list-disc list-inside space-y-1;
 }
 
@@ -85,6 +92,9 @@
 
 .markdown pre {
   @apply bg-dark-bg p-4 rounded-lg overflow-x-auto;
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .markdown pre code {
@@ -96,13 +106,22 @@
 }
 
 .markdown table {
-  @apply w-full border-collapse;
+  @apply w-full border-collapse text-sm;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
 }
 
-.markdown th, .markdown td {
-  @apply border border-dark-border px-3 py-2;
+.markdown th,
+.markdown td {
+  @apply border border-dark-border px-3 py-2 text-left;
+  white-space: nowrap;
 }
 
 .markdown th {
-  @apply bg-dark-surface font-semibold;
+  @apply bg-dark-surface font-semibold text-dark-text;
+}
+
+.markdown tr:nth-child(even) {
+  @apply bg-dark-bg/30;
 }

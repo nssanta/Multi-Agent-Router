@@ -186,8 +186,9 @@ def create_coder_agent(
         # Шаг 3: Верификация кода
         verifier_instance = state.get("verifier")
         
-        # Извлекаем код из ответа
-        code_blocks = _extract_code_blocks(response)
+        # Извлекаем код из ОРИГИНАЛЬНОГО ответа (до добавления результатов tools)
+        # чтобы верифицировать только код от LLM, а не метаданные write_file
+        code_blocks = _extract_code_blocks(original_response)
         
         if verifier_instance and code_blocks:
             verification_results = []
@@ -240,24 +241,27 @@ def create_coder_agent(
 
 
 def _extract_tool_commands(text: str) -> List[Dict[str, Any]]:
-    """Извлечь команды инструментов из текста"""
+    """
+    Извлечь команды инструментов из текста
+    
+    Использует новую универсальную систему ToolCallExtractor,
+    которая поддерживает множество форматов ответов LLM.
+    """
+    from backend.core.tool_calling import ToolCallExtractor
+    
+    extractor = ToolCallExtractor()
+    tool_calls = extractor.extract(text)
+    
+    # Конвертируем в старый формат для обратной совместимости
     commands = []
+    for call in tool_calls:
+        commands.append({
+            "tool": call.name,
+            "params": call.arguments
+        })
     
-    # Ищем паттерн: **Действие:** tool_name
-    # **Параметры:** {...}
-    pattern = r'\*\*Действие:\*\*\s*(\w+)\s*\n\*\*Параметры:\*\*\s*```(?:json)?\s*(\{[^`]+\})\s*```'
-    
-    matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
-    
-    for tool_name, params_str in matches:
-        try:
-            params = json.loads(params_str)
-            commands.append({
-                "tool": tool_name,
-                "params": params
-            })
-        except json.JSONDecodeError:
-            logger.warning(f"Failed to parse tool params: {params_str[:100]}")
+    if commands:
+        logger.info(f"Extracted {len(commands)} tool commands: {[c['tool'] for c in commands]}")
     
     return commands
 

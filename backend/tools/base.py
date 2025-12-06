@@ -34,9 +34,9 @@ class ToolResult:
     metadata: Dict[str, Any] = field(default_factory=dict)  # Дополнительные данные
     
     @classmethod
-    def success(cls, data: Any = None, message: str = "") -> "ToolResult":
+    def success(cls, data: Any = None, message: str = "", metadata: Dict[str, Any] = None) -> "ToolResult":
         """Создать успешный результат"""
-        return cls(status=ToolStatus.SUCCESS, data=data, message=message)
+        return cls(status=ToolStatus.SUCCESS, data=data, message=message, error=None, metadata=metadata or {})
     
     @classmethod
     def error(cls, error: str, data: Any = None) -> "ToolResult":
