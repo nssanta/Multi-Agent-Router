@@ -145,6 +145,6 @@ build/
 # Documentation with sensitive planning info - hide all except public ones
 *.md
 !README.md
-!PR_DOC.md
+!TECHNICAL_DOCS.md
 !CONTRIBUTING.md
 !LICENSE.md
