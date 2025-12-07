@@ -1,4 +1,4 @@
-"""Модуль конфигурации моделей LLM.
+"""Реализуем модуль конфигурации моделей LLM.
 
 Задачи:
 - Загрузка `backend/models.json` как единого источника правды по моделям
@@ -22,12 +22,12 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "models.json"
 
 
 class ModelsConfigError(RuntimeError):
-  """Ошибка конфигурации моделей (models.json)."""
+  """Определяем ошибку конфигурации моделей (models.json)."""
 
 
 @lru_cache(maxsize=1)
 def load_models_config() -> Dict[str, Any]:
-  """Загрузить и закэшировать конфиг моделей из models.json.
+  """Загружаем и кэшируем конфиг моделей из models.json.
 
   Возвращает словарь с ключами `providers` и `models`.
   """
@@ -47,11 +47,11 @@ def load_models_config() -> Dict[str, Any]:
   if not isinstance(providers, dict) or not isinstance(models, list):
     raise ModelsConfigError("Invalid models.json structure: expected 'providers' dict and 'models' list")
 
-  # Применить дефолт из env: LLM_PROVIDER / LLM_MODEL
+  # Применяем дефолт из env: LLM_PROVIDER / LLM_MODEL
   provider_type = os.getenv("LLM_PROVIDER", "gemini").lower()
   env_model_id = os.getenv("LLM_MODEL")
 
-  # Сбросить is_default, чтобы не было конфликтов
+  # Сбрасываем is_default, чтобы не было конфликтов
   for m in models:
     if "is_default" in m:
       m["is_default"] = bool(m["is_default"])
@@ -78,21 +78,21 @@ def load_models_config() -> Dict[str, Any]:
 
 
 def get_all_models() -> List[Dict[str, Any]]:
-  """Вернуть список всех моделей (как есть в конфиге)."""
+  """Возвращаем список всех моделей (как есть в конфиге)."""
 
   config = load_models_config()
   return config.get("models", [])
 
 
 def get_models_for_provider(provider: str) -> List[Dict[str, Any]]:
-  """Вернуть модели для конкретного провайдера."""
+  """Возвращаем модели для конкретного провайдера."""
 
   provider = provider.lower()
   return [m for m in get_all_models() if m.get("provider", "").lower() == provider]
 
 
 def get_model_by_id(model_id: str) -> Optional[Dict[str, Any]]:
-  """Найти модель по её id или вернуть None."""
+  """Ищем модель по её id или возвращаем None."""
 
   for m in get_all_models():
     if m.get("id") == model_id:
@@ -101,7 +101,7 @@ def get_model_by_id(model_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_default_model(provider: Optional[str] = None) -> Dict[str, Any]:
-  """Получить дефолтную модель.
+  """Получаем дефолтную модель.
 
   Выбор происходит по правилам:
   1) Если передан `provider` — работаем в его рамках, иначе берём `LLM_PROVIDER` из env (gemini/openrouter/...)
@@ -137,7 +137,7 @@ def get_default_model(provider: Optional[str] = None) -> Dict[str, Any]:
 
 
 def get_max_context_tokens(model_id: str) -> int:
-  """Получить максимальный размер контекста для модели.
+  """Получаем максимальный размер контекста для модели.
 
   Если модель не найдена или поле отсутствует — вернуть разумный дефолт (128k).
   """

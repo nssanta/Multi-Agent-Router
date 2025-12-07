@@ -1,4 +1,4 @@
-"""REST API endpoints"""
+"""Определяем конечные точки REST API."""
 
 from typing import Optional
 
@@ -44,12 +44,12 @@ class CreateSessionRequest(BaseModel):
 
 @app.on_event("startup")
 def startup():
-    """Инициализация при старте"""
+    """Выполняем инициализацию при старте."""
 
-    # Создать рабочую директорию, если ее нет
+    # Создаем рабочую директорию, если ее нет
     Path("./workspace/sessions").mkdir(parents=True, exist_ok=True)
 
-    # Загрузить конфиг моделей и убедиться, что дефолтная модель существует
+    # Загружаем конфиг моделей и убеждаемся, что дефолтная модель существует
     try:
         config = models_config.load_models_config()
     except Exception as e:  # pragma: no cover - фатальная ошибка конфигурации
@@ -57,13 +57,13 @@ def startup():
 
     provider_type = os.getenv("LLM_PROVIDER", "gemini").lower()
 
-    # Проверить наличие дефолтной модели (учитывает LLM_MODEL, если указана)
+    # Проверяем наличие дефолтной модели (учитывает LLM_MODEL, если указана)
     try:
         default_model = models_config.get_default_model(provider_type)
     except Exception as e:
         raise RuntimeError(f"Failed to determine default model for provider '{provider_type}': {e}")
 
-    # Проверить, что для дефолтного провайдера есть API-ключ
+    # Проверяем, что для дефолтного провайдера есть API-ключ
     api_env_by_provider = {
         "gemini": "GEMINI_API_KEY",
         "openrouter": "OPENROUTER_API_KEY",
@@ -92,8 +92,8 @@ def startup():
 
 @app.post("/api/sessions")
 def create_session(req: CreateSessionRequest):
-    """Создать новую сессию"""
-    # Если модель не указана явно, взять дефолт для текущего провайдера
+    """Создаем новую сессию."""
+    # Если модель не указана явно, берем дефолт для текущего провайдера
     model_id = req.model_id
     if not model_id:
         default_model = models_config.get_default_model()
@@ -109,23 +109,23 @@ def create_session(req: CreateSessionRequest):
 
 @app.get("/api/sessions")
 def list_sessions(agent_type: str = None):
-    """Список всех сессий"""
+    """Получаем список всех сессий."""
     sessions = session_manager.list_sessions(agent_type)
     return {"sessions": sessions}
 
 
 @app.get("/api/sessions/{agent_type}/{session_id}")
 def get_session(agent_type: str, session_id: str):
-    """Получить сессию по ID"""
+    """Получаем сессию по ID."""
     session = session_manager.get_session(session_id, agent_type)
     return session
 
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    """Отправить сообщение агенту"""
+    """Отправляем сообщение агенту."""
     
-    # Получить session path и историю
+    # Получаем session path и историю
     try:
         session = session_manager.get_session(req.session_id, req.agent_type)
     except ValueError as e:
@@ -133,37 +133,37 @@ def chat(req: ChatRequest):
         
     session_path = Path(session["path"])
 
-    # Получить историю сообщений (для контекста)
+    # Получаем историю сообщений (для контекста)
     history = session.get("messages", [])
 
-    # Определить модель для этой сессии
+    # Определяем модель для этой сессии
     session_state = session.get("state", {})
     model_id = session_state.get("model_id")
     if not model_id:
-        # Если старая сессия без модели – привязать к дефолтной
+        # Если старая сессия без модели – привязываем к дефолтной
         default_model = models_config.get_default_model()
         model_id = default_model.get("id")
         session_manager.update_state(req.session_id, req.agent_type, {"model_id": model_id})
 
-    # Обновить search_enabled в state сессии
+    # Обновляем search_enabled в state сессии
     session_manager.update_state(
         req.session_id,
         req.agent_type,
         {"search_enabled": req.search_enabled},
     )
 
-    # Создать LLM-провайдера исходя из выбранной модели
+    # Создаем LLM-провайдера исходя из выбранной модели
     try:
         llm_provider = get_llm_provider_for_model(model_id)
     except Exception as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    # Сбросить usage перед новым ходом (если провайдер поддерживает учёт токенов)
+    # Сбрасываем usage перед новым ходом (если провайдер поддерживает учёт токенов)
     reset_usage = getattr(llm_provider, "reset_usage", None)
     if callable(reset_usage):
         reset_usage()
 
-    # Создать агента
+    # Создаем агента
     if req.agent_type == "dialog":
         agent = create_dialog_agent(llm_provider, session_path)
     elif req.agent_type == "coder":
@@ -180,12 +180,12 @@ def chat(req: ChatRequest):
     else:
         raise HTTPException(400, f"Agent type {req.agent_type} not implemented yet")
 
-    # Загрузить state из сессии в агента (search_enabled, модель и т.п.)
+    # Загружаем state из сессии в агента (search_enabled, модель и т.п.)
     session = session_manager.get_session(req.session_id, req.agent_type)
     session_state = session.get("state", {})
     agent.state.data.update(session_state)
     
-    # Запустить агента С ИСТОРИЕЙ и СТРИМИНГОМ
+    # Запускаем агента С ИСТОРИЕЙ и СТРИМИНГОМ
     import json
     
     async def event_generator():
@@ -255,9 +255,9 @@ def chat(req: ChatRequest):
 
 @app.get("/api/models")
 def list_models(provider: Optional[str] = None):
-    """Список доступных LLM-моделей.
+    """Возвращаем список доступных LLM-моделей.
 
-    Если передан параметр `provider`, список фильтруется по нему
+    Если передан параметр `provider`, фильтруем список по нему
     (например, `provider=openrouter`).
     """
 
@@ -272,10 +272,10 @@ def list_models(provider: Optional[str] = None):
 @app.get("/api/models/openrouter-free")
 async def get_openrouter_free_models():
     """
-    Динамически получить список бесплатных моделей от OpenRouter API.
+    Динамически получаем список бесплатных моделей от OpenRouter API.
     
-    Фильтрует модели где pricing.prompt = "0" и pricing.completion = "0".
-    Кеширует результат на 1 час.
+    Фильтруем модели где pricing.prompt = "0" и pricing.completion = "0".
+    Кэшируем результат на 1 час.
     """
     import requests
     import time
@@ -318,7 +318,7 @@ async def get_openrouter_free_models():
         # Сортируем по имени
         free_models.sort(key=lambda x: x.get("display_name", ""))
         
-        # Кешируем
+        # Кешируем результат
         setattr(get_openrouter_free_models, cache_key, free_models)
         setattr(get_openrouter_free_models, cache_time_key, time.time())
         
@@ -331,7 +331,7 @@ async def get_openrouter_free_models():
 
 @app.post("/api/upload/{agent_type}/{session_id}")
 async def upload_file(agent_type: str, session_id: str, file: UploadFile = File(...)):
-    """Загрузить файл в сессию"""
+    """Загружаем файл в сессию."""
     
     try:
         session = session_manager.get_session(session_id, agent_type)
@@ -340,7 +340,7 @@ async def upload_file(agent_type: str, session_id: str, file: UploadFile = File(
         
     session_path = Path(session["path"])
     
-    # Сохранить файл в input/
+    # Сохраняем файл в input/
     file_path = session_path / "input" / file.filename
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
@@ -350,7 +350,7 @@ async def upload_file(agent_type: str, session_id: str, file: UploadFile = File(
 
 @app.delete("/api/sessions/{agent_type}/{session_id}")
 def delete_session(agent_type: str, session_id: str):
-    """Удалить сессию"""
+    """Удаляем сессию."""
     try:
         session_manager.delete_session(session_id, agent_type)
         return {"success": True, "message": f"Session {session_id} deleted"}
@@ -360,12 +360,12 @@ def delete_session(agent_type: str, session_id: str):
 
 @app.get("/api/sessions/{agent_type}/{session_id}/files")
 def list_session_files(agent_type: str, session_id: str):
-    """Получить список файлов в сессии"""
+    """Получаем список файлов в сессии."""
     try:
         session = session_manager.get_session(session_id, agent_type)
         session_path = Path(session["path"])
         
-        # Получить файлы из input/ и workspace/
+        # Получаем файлы из input/ и workspace/
         input_files = []
         workspace_files = []
         
@@ -402,7 +402,7 @@ def list_session_files(agent_type: str, session_id: str):
 
 @app.get("/api/sessions/{agent_type}/{session_id}/logs")
 def get_session_logs(agent_type: str, session_id: str):
-    """Получить логи сессии"""
+    """Получаем логи сессии."""
     try:
         session = session_manager.get_session(session_id, agent_type)
         session_path = Path(session["path"])
@@ -434,7 +434,7 @@ def get_session_logs(agent_type: str, session_id: str):
 
 @app.get("/api/agents")
 def list_agents():
-    """Список доступных агентов"""
+    """Возвращаем список доступных агентов."""
     return {
         "agents": [
             {"id": "dialog", "name": "Dialog", "description": "Chat assistant with web search"},

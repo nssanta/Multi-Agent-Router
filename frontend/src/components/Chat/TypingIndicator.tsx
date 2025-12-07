@@ -14,7 +14,7 @@ const statusConfig = {
     retrying: { emoji: '🔄', text: 'Повторяю попытку' },
 };
 
-// Умное определение статуса из текста
+// Умно определяем статус из текста
 const getStatusFromText = (text: string): keyof typeof statusConfig => {
     const lower = text.toLowerCase();
     if (lower.includes('retry') || lower.includes('retrying')) return 'retrying';
@@ -29,7 +29,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps & { customText?: str
     status = 'thinking',
     customText
 }) => {
-    // Автоопределение статуса из customText
+    // Автоматически определяем статус из customText
     const effectiveStatus = customText ? getStatusFromText(customText) : status;
     const config = statusConfig[effectiveStatus];
     const displayText = customText || config.text;

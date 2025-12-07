@@ -1,7 +1,7 @@
 """
-Собственный Agent Framework - замена google.adk.agents
+Реализуем собственный Agent Framework - замену google.adk.agents.
 
-Реализует основные классы:
+Реализуем основные классы:
 - Agent: базовый агент с LLM
 - SequentialAgent: последовательное выполнение
 - ParallelAgent: параллельное выполнение
@@ -24,18 +24,18 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentState:
     """
-    Состояние агента (замена CallbackContext из ADK)
+    Определяем состояние агента (замена CallbackContext из ADK).
     
-    Хранит данные между вызовами агентов и callbacks
+    Храним данные между вызовами агентов и callbacks.
     """
     data: Dict[str, Any] = field(default_factory=dict)
     
     def get(self, key: str, default=None):
-        """Получить значение из state"""
+        """Получаем значение из state."""
         return self.data.get(key, default)
     
     def set(self, key: str, value):
-        """Установить значение в state"""
+        """Устанавливаем значение в state."""
         self.data[key] = value
     
     def __getitem__(self, key):
@@ -48,15 +48,15 @@ class AgentState:
         return key in self.data
     
     def to_dict(self) -> Dict:
-        """Экспортировать в dict для сохранения"""
+        """Экспортируем в dict для сохранения."""
         return self.data.copy()
 
 
 class Agent:
     """
-    Базовый класс агента (замена google.adk.agents.Agent)
+    Определяем базовый класс агента (замена google.adk.agents.Agent).
     
-    Поддерживает:
+    Поддерживаем:
     - Промты (instruction)
     - Callbacks (before/after)
     - Tools (пока не реализовано)
@@ -70,7 +70,7 @@ class Agent:
         instruction: str | Callable[[AgentState], str],
         global_instruction: str = "",
         tools: Optional[List[Callable]] = None,
-        tool_definitions: Optional[List[Dict]] = None,  # For native tool calling
+        tool_definitions: Optional[List[Dict]] = None,  # Для вызова нативных инструментов
         code_executor: Optional[LocalCodeExecutor] = None,
         before_callback: Optional[Callable[[AgentState], None]] = None,
         after_callback: Optional[Callable[[AgentState, str], None]] = None,
@@ -91,7 +91,7 @@ class Agent:
         self.state = AgentState()
     
     def _supports_native_tools(self) -> bool:
-        """Проверить поддерживает ли провайдер native tool calling"""
+        """Проверяем, поддерживает ли провайдер native tool calling."""
         return (
             hasattr(self.llm_provider, 'supports_native_tools') and 
             self.llm_provider.supports_native_tools() and
@@ -99,14 +99,14 @@ class Agent:
         )
     
     def _get_instruction(self) -> str:
-        """Получить instruction (может быть строкой или функцией)"""
+        """Получаем instruction (может быть строкой или функцией)."""
         if callable(self.instruction):
             return self.instruction(self.state)
         return self.instruction
     
     def run(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> str:
         """
-        Запустить агента (синхронная обертка над streaming)
+        Запускаем агента (синхронная обертка над streaming).
         """
         response_content = ""
         for event in self.run_stream(user_input, history):
@@ -116,7 +116,7 @@ class Agent:
 
     def run_stream(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> Iterator[Dict[str, str]]:
         """
-        Запустить агента в режиме стриминга с поддержкой multi-turn loops.
+        Запускаем агента в режиме стриминга с поддержкой multi-turn loops.
         
         Yields:
             Dict[str, str]: {
@@ -129,12 +129,12 @@ class Agent:
         
         logger.info(f"[{self.name}] Starting run_stream")
         
-        # Init state
+        # Инициализируем состояние
         self.state.set("current_user_input", user_input)
         if self.before_callback:
             self.before_callback(self.state)
 
-        # Build initial history
+        # Создаем начальную историю
         current_history = list(history) if history else []
         current_history.append({"role": "user", "content": user_input})
         
@@ -145,11 +145,11 @@ class Agent:
         for turn in range(max_turns):
             logger.info(f"[{self.name}] Turn {turn+1}/{max_turns}")
             
-            # Prepare Prompt
+            # Подготавливаем Prompt
             instruction = self._get_instruction()
             full_prompt = f"{self.global_instruction}\n\n{instruction}\n\n"
             
-            # History
+            # Формируем историю
             if current_history:
                 full_prompt += "**Conversation History:**\n"
                 for msg in current_history[-20:]: # Last 20 messages
@@ -166,7 +166,7 @@ class Agent:
             # Add "Response:" marker? Not strictly needed for chat models but helps
             # full_prompt += "Assistant: " 
 
-            # Log request
+            # Логируем запрос
             if self.code_executor and hasattr(self.code_executor, 'logs_path'):
                  self._log_llm_request(user_input, full_prompt)
 
@@ -508,9 +508,9 @@ Do not wrap the JSON in XML tags or other text. Ensure strict JSON syntax."""
 
 class SequentialAgent:
     """
-    Последовательное выполнение субагентов
+    Выполняем субагентов последовательно.
     
-    Каждый агент получает результат предыдущего как input
+    Каждый агент получает результат предыдущего как input.
     """
     
     def __init__(
@@ -529,7 +529,7 @@ class SequentialAgent:
         self.state = AgentState()
     
     def run(self, user_input: str) -> str:
-        """Запустить последовательно всех субагентов"""
+        """Запускаем последовательно всех субагентов."""
         logger.info(f"[{self.name}] Sequential start")
         
         if self.before_callback:
@@ -537,7 +537,7 @@ class SequentialAgent:
         
         result = user_input
         for agent in self.sub_agents:
-            # Поделиться state между агентами
+            # Передаем state между агентами
             agent.state = self.state
             result = agent.run(result)
         
@@ -550,9 +550,9 @@ class SequentialAgent:
 
 class ParallelAgent:
     """
-    Параллельное выполнение субагентов
+    Выполняем субагентов параллельно.
     
-    Все агенты запускаются одновременно
+    Все агенты запускаются одновременно.
     """
     
     def __init__(
@@ -569,7 +569,7 @@ class ParallelAgent:
         self.state = AgentState()
     
     def run(self, user_input: str) -> str:
-        """Запустить параллельно всех субагентов"""
+        """Запускаем параллельно всех субагентов."""
         logger.info(f"[{self.name}] Parallel start ({len(self.sub_agents)} agents)")
         
         def run_agent(agent):
@@ -585,9 +585,9 @@ class ParallelAgent:
 
 class LoopAgent:
     """
-    Циклическое выполнение агента
+    Выполняем агента циклически.
     
-    Повторяет агента N раз или пока не выполнится условие
+    Повторяем агента N раз или пока не выполнится условие.
     """
     
     def __init__(
@@ -606,7 +606,7 @@ class LoopAgent:
         self.state = AgentState()
     
     def run(self, user_input: str) -> str:
-        """Запустить агента в цикле"""
+        """Запускаем агента в цикле."""
         logger.info(f"[{self.name}] Loop start (max {self.max_iterations} iterations)")
         
         if self.before_callback:
@@ -616,7 +616,7 @@ class LoopAgent:
         for i in range(self.max_iterations):
             logger.info(f"[{self.name}] Iteration {i+1}/{self.max_iterations}")
             
-            # Выполнить всех субагентов
+            # Выполняем всех субагентов
             for agent in self.sub_agents:
                 agent.state = self.state
                 result = agent.run(result)

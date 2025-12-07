@@ -10,7 +10,7 @@ export interface Message {
   content: string;
   timestamp: string;
   files?: string[];
-  isTemporary?: boolean; // Для временных статусных сообщений
+  isTemporary?: boolean; // Указываем, является ли сообщение временным статусным
 }
 
 export interface SessionHistory {

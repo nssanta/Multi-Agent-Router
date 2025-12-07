@@ -5,27 +5,46 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Модульная платформа для создания AI-агентов с поддержкой нескольких LLM-провайдеров.**
+**Modular AI agent platform with multi-provider LLM support.**
+
+🇷🇺 [Русская версия](README_RU.md)
 
 ![Coder Agent](coder_screen.png)
 
 ---
 
-## Что это
+## What Is This
 
-Расширяемая система агентов, где каждый компонент можно заменить или модифицировать:
+A flexible, extensible framework for building AI agents. Every component is modular and replaceable:
 
-| Компонент | Назначение | Можно заменить на |
-|-----------|------------|-------------------|
-| **LLM Provider** | Генерация ответов | Любой OpenAI-совместимый API |
-| **Agent** | Логика обработки | Свой агент с кастомными промптами |
-| **Tools** | Инструменты агента | Любые Python функции |
-| **Code Executor** | Выполнение кода | Docker sandbox, VM, или remote API |
-| **Frontend** | UI интерфейс | Любой React/Vue/Svelte клиент |
+| Component | Purpose | Replace With |
+|-----------|---------|--------------|
+| **LLM Provider** | Response generation | Any OpenAI-compatible API |
+| **Agent** | Processing logic | Custom agent with your prompts |
+| **Tools** | Agent capabilities | Any Python functions |
+| **Code Executor** | Code execution | Docker sandbox, VM, remote API |
+| **Frontend** | User interface | Any React/Vue/Svelte client |
 
 ---
 
-## Архитектура
+## Agents
+
+### 🔍 Dialog Agent
+Intelligent conversational agent with web capabilities:
+- **Smart Search** — Multi-source web search with result aggregation
+- **Page Reading** — Extract and summarize content from any URL
+- **Context Awareness** — Maintains conversation history and session state
+
+### 🧠 Coder Agent
+Full-featured coding assistant that actually executes code:
+- **File Operations** — Create, read, list files in isolated workspace
+- **Code Execution** — Run Python in sandboxed Docker environment
+- **Native Tool Calling** — Gemini 2.5 Pro uses native function calling for reliable tool execution
+- **Multi-File Projects** — Import between files, build complete projects
+
+---
+
+## Architecture
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
@@ -51,38 +70,23 @@
 
 ---
 
-## Агенты
-
-### Dialog Agent
-- Умный поиск в интернете (`SEARCH`, `SMART_SEARCH`)
-- Чтение веб-страниц (`READ`)
-- Мультимодельная поддержка
-
-### Coder Agent  
-- Создание файлов (`write_file`)
-- Чтение файлов (`read_file`)
-- Выполнение Python (`run_code`)
-- Native Tool Calling для Gemini
-
----
-
-## Быстрый старт
+## Quick Start
 
 ```bash
 git clone https://github.com/nssanta/Multi-Agent-Router.git
 cd Multi-Agent-Router
 cp .env.example .env
-# Добавьте API ключи в .env
+# Add your API keys to .env
 docker compose up --build
 ```
 
-Открыть: **http://localhost:3000**
+Open: **http://localhost:3000**
 
 ---
 
-## Расширение системы
+## Extending the System
 
-### Добавить нового агента
+### Add a New Agent
 
 ```python
 # backend/agents/my_agent/agent.py
@@ -90,33 +94,33 @@ def create_my_agent(llm_provider, session_path):
     return Agent(
         name="my_agent",
         llm_provider=llm_provider,
-        instruction="Your custom prompt here",
-        tool_definitions=[...],  # Ваши инструменты
+        instruction="Your custom prompt",
+        tool_definitions=[...],
     )
 ```
 
-### Добавить новый инструмент
+### Add a New Tool
 
 ```python
 # backend/tools/my_tool.py
-def my_tool(param1: str, param2: int) -> str:
-    """Описание инструмента для LLM"""
-    return f"Result: {param1} {param2}"
+def my_tool(param: str) -> str:
+    """Tool description for LLM"""
+    return f"Result: {param}"
 ```
 
-### Добавить LLM провайдера
+### Add an LLM Provider
 
 ```python
 # backend/core/llm_provider.py
 class MyProvider(BaseLLMProvider):
     def generate(self, prompt: str) -> str:
-        # Ваша логика
+        # Your implementation
         pass
 ```
 
 ---
 
-## Конфигурация
+## Configuration
 
 ```env
 GEMINI_API_KEY=...
@@ -127,24 +131,24 @@ LLM_MODEL=gemini-2.5-pro
 
 ---
 
-## Структура проекта
+## Project Structure
 
 ```
 backend/
-├── agents/           # Агенты (dialog, coder)
-├── api/              # FastAPI роуты
+├── agents/           # Dialog & Coder agents
+├── api/              # FastAPI routes
 ├── core/             # LLM, sessions, executor
-└── tools/            # Инструменты агентов
+└── tools/            # Agent tools
 
 frontend/
-├── src/components/   # React компоненты
-└── src/services/     # API клиент
+├── src/components/   # React components
+└── src/services/     # API client
 ```
 
-Подробности в [TECHNICAL_DOCS.md](TECHNICAL_DOCS.md)
+Full technical documentation: [TECHNICAL_DOCS.md](TECHNICAL_DOCS.md)
 
 ---
 
-## Лицензия
+## License
 
 MIT

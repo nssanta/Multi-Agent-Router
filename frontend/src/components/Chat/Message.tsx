@@ -17,7 +17,7 @@ const parseMessageContent = (content: string) => {
   let finalAnswer = content;
   let hasReasoning = false;
 
-  // 0. Extract <thinking>...</thinking> (DeepSeek / Chain of Thought)
+  // 0. Извлекаем <thinking>...</thinking> (DeepSeek / Chain of Thought)
   const thinkingPattern = /<thinking>([\s\S]*?)<\/thinking>/gi;
   let thinkingMatch;
   while ((thinkingMatch = thinkingPattern.exec(content)) !== null) {
@@ -37,7 +37,7 @@ const parseMessageContent = (content: string) => {
     if (execMatch[1]) matches.push(execMatch[1]);
   }
 
-  // 1b. Raw JSON fallback
+  // 1b. Fallback на сырой JSON
   if (matches.length === 0) {
     while ((execMatch = rawToolPattern.exec(content)) !== null) {
       if (execMatch[1] && execMatch[1].trim().endsWith('}')) {
@@ -46,7 +46,7 @@ const parseMessageContent = (content: string) => {
     }
   }
 
-  // Parse JSON objects
+  // Парсим JSON объекты
   matches.forEach(jsonStr => {
     try {
       const parsed = JSON.parse(jsonStr);
@@ -111,7 +111,7 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
   const [showSources, setShowSources] = useState(false);
   // const [showTools, setShowTools] = useState(false); // Handled by ToolUsage
 
-  // Парсить контент
+  // Парсим контент
   const parsed = !isUser ? parseMessageContent(message.content) : null;
 
   return (

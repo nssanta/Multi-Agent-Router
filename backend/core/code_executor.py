@@ -40,7 +40,7 @@ class LocalCodeExecutor:
         self.input_path.mkdir(parents=True, exist_ok=True)
     
     def setup_venv(self, force_recreate: bool = False):
-        """Создать изолированный venv для сессии"""
+        """Создаем изолированный venv для сессии."""
         if self.venv_path.exists() and not force_recreate:
             logger.info(f"Venv already exists: {self.venv_path}")
             return
@@ -85,7 +85,7 @@ class LocalCodeExecutor:
         filename: str = "temp_code.py"
     ) -> Dict:
         """
-        Выполнить Python код в изолированном окружении
+        Выполняем Python код в изолированном окружении.
         
         Args:
             code: Python код для выполнения
@@ -213,7 +213,7 @@ class LocalCodeExecutor:
         score: Optional[float] = None,
         error: Optional[str] = None
     ):
-        """Логировать выполнение кода в файл"""
+        """Логируем выполнение кода в файл."""
         from datetime import datetime
         import json
         
@@ -244,7 +244,7 @@ class LocalCodeExecutor:
             json.dump(log_data, f, indent=2, ensure_ascii=False)
     
     def _extract_score(self, stdout: str) -> Optional[float]:
-        """Извлечь score из stdout (паттерн: 'Final Validation Performance: X.XXX')"""
+        """Извлекаем score из stdout (паттерн: 'Final Validation Performance: X.XXX')."""
         pattern = r"Final Validation Performance:\s*([\d.]+)"
         match = re.search(pattern, stdout)
         if match:
@@ -255,7 +255,7 @@ class LocalCodeExecutor:
         return None
     
     def install_package(self, package: str):
-        """Установить пакет в venv"""
+        """Устанавливаем пакет в venv."""
         pip_path = self.venv_path / "bin" / "pip"
         subprocess.run(
             [str(pip_path), "install", package],
@@ -269,7 +269,7 @@ class LocalCodeExecutor:
         notebook_path: Path, 
         timeout: int = 600
     ) -> Dict:
-        """Выполнить Jupyter notebook через nbconvert"""
+        """Выполняем Jupyter notebook через nbconvert."""
         python_path = self.venv_path / "bin" / "python"
         nbconvert_path = self.venv_path / "bin" / "jupyter"
         

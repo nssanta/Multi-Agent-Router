@@ -1,14 +1,14 @@
-"""FastAPI application entry point"""
+"""Инициализируем точку входа приложения FastAPI."""
 
 import uvicorn
 import logging
 from dotenv import load_dotenv
 from backend.api.routes import app
 
-# Load environment variables from .env file
+# Загружаем переменные окружения из файла .env
 load_dotenv()
 
-# Logging configuration
+# Настраиваем конфигурацию логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

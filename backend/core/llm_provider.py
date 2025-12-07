@@ -36,18 +36,18 @@ class BaseLLMProvider(ABC):
 
     @abstractmethod
     def generate(self, prompt: str, **kwargs) -> str:
-        """Синхронная генерация ответа"""
+        """Синхронно генерируем ответ."""
         pass
     
     @abstractmethod
     def stream(self, prompt: str, **kwargs) -> Iterator[str]:
-        """Потоковая генерация ответа"""
+        """Генерируем ответ потоково."""
         pass
 
     # ===== Метрики токенов =====
 
     def reset_usage(self) -> None:
-        """Сбросить счётчики usage перед новым ходом агента."""
+        """Сбрасываем счётчики usage перед новым ходом агента."""
         self._usage_totals = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
@@ -56,7 +56,7 @@ class BaseLLMProvider(ABC):
         self._last_usage = None
 
     def _record_usage(self, usage: Optional[Dict[str, Any]]) -> None:
-        """Внутренний метод для записи usage из конкретного LLM вызова.
+        """Записываем usage из конкретного LLM вызова (внутренний метод).
 
         Ожидается словарь формата:
         {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int}
@@ -76,16 +76,16 @@ class BaseLLMProvider(ABC):
             self._usage_totals[k] = self._usage_totals.get(k, 0) + v
 
     def get_last_usage(self) -> Optional[Dict[str, int]]:
-        """Вернуть usage последнего LLM-вызова (если провайдер его поддерживает)."""
+        """Возвращаем usage последнего LLM-вызова (если провайдер его поддерживает)."""
         return dict(self._last_usage) if self._last_usage is not None else None
 
     def get_cumulative_usage(self) -> Dict[str, int]:
-        """Суммарный usage по всем вызовам с момента последнего reset_usage()."""
+        """Возвращаем суммарный usage по всем вызовам с момента последнего reset_usage()."""
         return dict(self._usage_totals)
     
     def get_context_limit(self) -> int:
         """
-        Получить лимит контекста в токенах
+        Получаем лимит контекста в токенах.
         
         Returns:
             Примерный лимит токенов для модели
@@ -94,7 +94,7 @@ class BaseLLMProvider(ABC):
     
     def estimate_tokens(self, text: str) -> int:
         """
-        Оценить количество токенов в тексте
+        Оцениваем количество токенов в тексте.
         
         Простая эвристика: ~4 символа = 1 токен для английского
         ~2-3 символа = 1 токен для русского (больше multi-byte chars)
@@ -113,7 +113,7 @@ class BaseLLMProvider(ABC):
                                   history: str = "",
                                   buffer_ratio: float = 0.2) -> int:
         """
-        Рассчитать доступное место для контента
+        Рассчитываем доступное место для контента.
         
         Args:
             system_prompt: Системный промпт
@@ -208,7 +208,7 @@ class GeminiProvider(BaseLLMProvider):
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Генерация с Native Tool Calling (Function Calling)
+        Генерируем с использованием Native Tool Calling (Function Calling).
         
         Это гарантирует 100% валидный JSON tool call от модели.
         
@@ -295,12 +295,12 @@ class GeminiProvider(BaseLLMProvider):
             }
     
     def supports_native_tools(self) -> bool:
-        """Проверить поддерживает ли провайдер native tool calling"""
+        """Проверяем, поддерживает ли провайдер native tool calling."""
         return True
     
     def generate_with_search(self, prompt: str, **kwargs) -> Dict[str, Any]:
         """
-        Генерация с Grounding Search (встроенный поиск Google)
+        Генерируем с использованием Grounding Search (встроенный поиск Google).
         
         Использует google_search_retrieval для получения актуальной информации.
         Лимиты Free Tier: зависят от модели
@@ -521,7 +521,7 @@ class OpenRouterProvider(BaseLLMProvider):
         **kwargs
     ) -> dict:
         """
-        Генерация с поддержкой native tool calling
+        Генерируем с поддержкой native tool calling.
         
         Args:
             messages: Список сообщений в OpenAI формате
@@ -586,7 +586,7 @@ class OpenRouterProvider(BaseLLMProvider):
         **kwargs
     ) -> str:
         """
-        Чат с историей сообщений
+        Обрабатываем чат с историей сообщений.
         
         Args:
             messages: Список сообщений [{role, content}, ...]
@@ -627,7 +627,7 @@ class OpenRouterProvider(BaseLLMProvider):
 
 
 def get_llm_provider(provider_type: str, **config) -> BaseLLMProvider:
-    """Фабрика LLM-провайдеров по явному типу.
+    """Создаем LLM-провайдер по явному типу (фабрика).
 
     Пример использования::
 
@@ -653,7 +653,7 @@ def get_llm_provider(provider_type: str, **config) -> BaseLLMProvider:
 
 
 def get_llm_provider_for_model(model_id: Optional[str] = None) -> BaseLLMProvider:
-    """Создать LLM-провайдер на основе конфигурации модели.
+    """Создаем LLM-провайдер на основе конфигурации модели.
 
     Логика:
     1) Если `model_id` передан — берём модель из models.json по id

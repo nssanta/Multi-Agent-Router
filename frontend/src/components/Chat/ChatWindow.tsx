@@ -22,7 +22,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
   const [isRetrying, setIsRetrying] = useState(false);
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
 
-  // Load session history and reset retry state
+  // Загружаем историю сессии и сбрасываем состояние повтора
   useEffect(() => {
     // ВСЕГДА сбрасываем retry state при смене сессии
     setLastErrorCode(null);
@@ -44,7 +44,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
         console.log('Loaded messages:', session.messages);
         setMessages(session.messages || []);
 
-        // Восстановить usage и информацию о модели из state сессии (если есть)
+        // Восстанавливаем usage и информацию о модели из state сессии (если есть)
         const state = session.state || {};
         if (state.usage) {
           setUsage(state.usage as ChatUsage);
@@ -79,7 +79,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
         const lastMsg = newMessages[lastMsgIndex];
 
         if (lastMsg && lastMsg.role === 'assistant') {
-          // Immutable update to prevent Strict Mode duplication
+          // Иммутабельное обновление для предотвращения дублирования в Strict Mode
           newMessages[lastMsgIndex] = {
             ...lastMsg,
             content: lastMsg.content + token
@@ -99,29 +99,29 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
       setIsRetrying(false);
       setAgentStatus(null);
       if (isRetry) {
-        // Success! we can clear the error code.
-        // We DO NOT clear lastUserMessage so the user can regenerate again if they want.
+        // Успех! Можем очистить код ошибки.
+        // НЕ очищаем lastUserMessage, чтобы пользователь мог перегенерировать снова, если захочет.
         setLastErrorCode(null);
       } else {
-        // Normal completion
+        // Нормальное завершение
         setLastErrorCode(null);
       }
     },
     onError: (err: string) => {
       console.error("Stream error:", err);
-      // Update last message with error
+      // Обновляем последнее сообщение с ошибкой
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMsgIndex = newMessages.length - 1;
         const lastMsg = newMessages[lastMsgIndex];
 
-        // Format error text
+        // Форматируем текст ошибки
         const errorText = `\n\n[Error: ${err}]`;
 
         if (lastMsg && lastMsg.role === 'assistant') {
           let newContent = lastMsg.content;
 
-          // If content is empty or just "Thinking...", replace it
+          // Если контент пустой или просто "Thinking...", заменяем его
           if (lastMsg.content === '' || lastMsg.content === 'Thinking...') {
             newContent = errorText.trim();
           } else {
@@ -148,7 +148,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
       setIsRetrying(false);
       setAgentStatus(null);
 
-      // Always allow retry on error
+      // Всегда разрешаем повтор при ошибке
       if (err.includes('429') || err.toLowerCase().includes('rate limit')) {
         setLastErrorCode(429);
       } else {
@@ -162,14 +162,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
 
     const effectiveSearchEnabled = searchEnabled ?? true;
 
-    // Add search instruction if enabled
+    // Добавляем инструкцию поиска, если включено
     let finalMessage = message;
     if (effectiveSearchEnabled && message && !message.includes('SEARCH[')) {
       // Optionally prepend search hint to message
       // finalMessage = `${message}\n\n(Web search is enabled)`;
     }
 
-    // Upload files first if any
+    // Загружаем файлы, если есть
     if (files && files.length > 0) {
       try {
         const uploadPromises = files.map(file => api.uploadFile(agentType, sessionId, file));
@@ -189,7 +189,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
         return;
       }
     } else {
-      // Add user message
+      // Добавляем сообщение пользователя
       const userMsg: Message = {
         role: 'user',
         content: message,
@@ -202,7 +202,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
     setLastSearchEnabled(effectiveSearchEnabled);
     setLastErrorCode(null);
 
-    // Create placeholder for assistant message
+    // Создаем плейсхолдер для сообщения ассистента
     const assistantMsg: Message = {
       role: 'assistant',
       content: '',
@@ -229,7 +229,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
     setLoading(true);
     setAgentStatus("Retrying...");
 
-    // Clear previous error content from the LAST message if it looks like an error
+    // Очищаем предыдущий контент ошибки из ПОСЛЕДНЕГО сообщения, если это похоже на ошибку
     setMessages(prev => {
       const newMessages = [...prev];
       const lastMsg = newMessages[newMessages.length - 1];
@@ -241,14 +241,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
           content: ''
         }; // Reset content for reuse
       } else {
-        // Or add new placeholder if last wasn't assistant?
-        // Usually it is.
+        // Или добавляем новый плейсхолдер, если последний не был от ассистента?
+        // Обычно это он.
       }
       return newMessages;
     });
 
-    // Don't reset LastErrorCode yet, wait for success or new error
-    // check if last message exists, if not add it (rare)
+    // Не сбрасываем LastErrorCode пока, ждем успеха или новой ошибки
+    // проверяем, существует ли последнее сообщение, если нет - добавляем (редко)
 
     await api.streamChat(
       agentType,
@@ -281,7 +281,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
     );
   }
 
-  // Добавить временное сообщение "в процессе" если агент думает
+  // Добавляем временное сообщение "в процессе" если агент думает
   const displayMessages = loading
     ? [...messages]  // Не добавляем фейковое сообщение, используем TypingIndicator
     : messages;

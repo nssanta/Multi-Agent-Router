@@ -39,14 +39,14 @@ export const FileBrowser: React.FC = () => {
     }
   };
 
-  // Filter sessions
+  // Фильтруем сессии
   const filteredSessions = sessions.filter(session => {
     const matchesSearch = session.session_id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAgent = filterAgent === 'all' || session.agent_type === filterAgent;
     return matchesSearch && matchesAgent;
   });
 
-  // Group by agent type
+  // Группируем по типу агента
   const agentTypes = Array.from(new Set(sessions.map(s => s.agent_type)));
 
   return (

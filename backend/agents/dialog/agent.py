@@ -28,12 +28,12 @@ def create_dialog_agent(
     llm_provider: BaseLLMProvider,
     session_path: Path
 ) -> Agent:
-    """Создать Dialog Agent с веб-поиском"""
+    """Создаем Dialog Agent с веб-поиском."""
     
     code_executor = LocalCodeExecutor(session_path)
 
     def get_instruction_with_context(state):
-        """Динамически добавляет дату, список файлов и статус поиска в промпт"""
+        """Динамически добавляем дату, список файлов и статус поиска в промпт."""
         search_enabled = state.get("search_enabled", True)
         
         # Текущая дата и время UTC
@@ -81,19 +81,19 @@ Let's help the user effectively!"""
         return base_instruction
 
     def before_run(state):
-        """Обработка перед запуском агента"""
+        """Выполняем обработку перед запуском агента."""
         logger.info(f"[DialogAgent] Starting new interaction")
         # Сохранить текущий user input для использования в after_run
         # (будет установлено в agent_framework.py перед вызовом before_callback)
     
     def after_run(state, response):
         """
-        Обработка после получения ответа (ITERATIVE multi-turn reasoning):
-        1. Выполнить веб-поиск если нужно
-        2. ПРОЧИТАТЬ содержимое найденных страниц (ТОП-3)
-        3. ВТОРОЙ ВЫЗОВ LLM для анализа прочитанного
-        4. Если нужен еще раунд - повторить (до 3 циклов)
-        5. Вернуть финальный ответ с источниками
+        Обрабатываем ответ после получения (ITERATIVE multi-turn reasoning):
+        1. Выполняем веб-поиск если нужно
+        2. Читаем содержимое найденных страниц (ТОП-3)
+        3. Делаем ВТОРОЙ ВЫЗОВ LLM для анализа прочитанного
+        4. Если нужен еще раунд - повторяем (до 3 циклов)
+        5. Возвращаем финальный ответ с источниками
         """
         
         # Проверить включен ли поиск

@@ -29,7 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [loading, setLoading] = useState(true);
   const [coderConfig, setCoderConfig] = useState<CoderConfig>(defaultCoderConfig);
 
-  // Load sessions and agents
+  // Загружаем сессии и агентов
   useEffect(() => {
     loadData();
   }, []);
@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ]);
 
       setSessions(sessionsData.sessions);
-      // Filter out unwanted agents (DS, MLE) for now
+      // Фильтруем нежелательных агентов (DS, MLE) пока что
       const allowedAgents = ['coder', 'dialog'];
       const filteredAgents = (agentsData.agents || []).filter((a: Agent) => allowedAgents.includes(a.id));
       setAgents(filteredAgents);

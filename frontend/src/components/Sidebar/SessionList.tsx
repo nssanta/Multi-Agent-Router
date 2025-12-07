@@ -17,12 +17,12 @@ export const SessionList: React.FC<SessionListProps> = ({
   onDeleteSession,
   agentType,
 }) => {
-  // Filter by agent type if specified
+  // Фильтруем по типу агента, если указан
   const filteredSessions = agentType
     ? sessions.filter(s => s.agent_type === agentType)
     : sessions;
 
-  // Group by agent type
+  // Группируем по типу агента
   const grouped = filteredSessions.reduce((acc, session) => {
     if (!acc[session.agent_type]) {
       acc[session.agent_type] = [];

@@ -33,7 +33,7 @@ def create_coder_agent(
     verifier_model_id: Optional[str] = None
 ) -> Agent:
     """
-    Создать Coder Agent с полным функционалом
+    Создаем Coder Agent с полным функционалом.
     
     Args:
         llm_provider: LLM провайдер
@@ -55,7 +55,7 @@ def create_coder_agent(
     tools = tool_registry.get_tools_for_agent("coder", session_path=str(session_path))
     
     def get_instruction_with_context(state: AgentState) -> str:
-        """Динамически добавляет контекст в промпт"""
+        """Динамически добавляем контекст в промпт."""
         
         base_instruction = get_coder_instruction()
         
@@ -107,7 +107,7 @@ def create_coder_agent(
         return base_instruction + context
     
     def before_run(state: AgentState) -> None:
-        """Подготовка перед запуском"""
+        """Выполняем подготовку перед запуском."""
         
         # Сохраняем компоненты в state для использования в after_run
         state.set("tot", tot)
@@ -123,7 +123,7 @@ def create_coder_agent(
     
     def after_run(state: AgentState, response: str) -> str:
         """
-        Пост-обработка ответа агента:
+        Выполняем пост-обработку ответа агента:
         1. Ищем команды инструментов в ответе
         2. Выполняем инструменты
         3. Если есть код - верифицируем
@@ -306,9 +306,9 @@ def create_coder_agent(
 
 def _extract_tool_commands(text: str) -> List[Dict[str, Any]]:
     """
-    Извлечь команды инструментов из текста
+    Извлекаем команды инструментов из текста.
     
-    Использует новую универсальную систему ToolCallExtractor,
+    Используем новую универсальную систему ToolCallExtractor,
     которая поддерживает множество форматов ответов LLM.
     """
     from backend.core.tool_calling import ToolCallExtractor
@@ -334,7 +334,7 @@ def _execute_tool(
     command: Dict[str, Any], 
     tools: List[Any]
 ) -> ToolResult:
-    """Выполнить инструмент"""
+    """Выполняем инструмент."""
     
     tool_name = command.get("tool", "")
     params = command.get("params", {})
@@ -360,7 +360,7 @@ def _format_tool_results(
     commands: List[Dict], 
     results: List[ToolResult]
 ) -> str:
-    """Форматировать результаты выполнения инструментов"""
+    """Форматируем результаты выполнения инструментов."""
     
     formatted = []
     
@@ -389,7 +389,7 @@ def _format_tool_results(
 
 
 def _should_use_tot(user_message: str, response: str) -> bool:
-    """Определить, нужен ли Tree of Thoughts"""
+    """Определяем, нужен ли Tree of Thoughts."""
     
     # Эвристики:
     # 1. Длинное сообщение пользователя
@@ -416,7 +416,7 @@ def _should_use_tot(user_message: str, response: str) -> bool:
 
 
 def _extract_code_blocks(text: str) -> List[tuple]:
-    """Извлечь блоки кода из markdown"""
+    """Извлекаем блоки кода из markdown."""
     
     pattern = r'```(\w*)\n(.*?)```'
     matches = re.findall(pattern, text, re.DOTALL)
@@ -425,7 +425,7 @@ def _extract_code_blocks(text: str) -> List[tuple]:
 
 
 def _get_context(state: AgentState) -> str:
-    """Получить контекст сессии для ToT"""
+    """Получаем контекст сессии для ToT."""
     
     session_path = state.get("session_path", "")
     history = state.get("history", [])
@@ -450,7 +450,7 @@ def _log_agent_run(
     response: str,
     actions: List[Dict]
 ) -> None:
-    """Логировать запуск агента"""
+    """Логируем запуск агента."""
     
     logs_dir = session_path / "logs"
     logs_dir.mkdir(exist_ok=True)

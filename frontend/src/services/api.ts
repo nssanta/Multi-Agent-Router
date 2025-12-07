@@ -31,22 +31,25 @@ class ApiClient {
   }
 
   // Agents
+  /** Получаем список агентов. */
   async getAgents(): Promise<{ agents: Agent[] }> {
     return this.request('/agents');
   }
 
   // Models
+  /** Получаем список моделей. */
   async getModels(provider?: string): Promise<{ models: ModelInfo[] }> {
     const url = provider ? `/models?provider=${provider}` : '/models';
     return this.request(url);
   }
 
-  // Динамический список free моделей от OpenRouter API
+  /** Получаем динамический список бесплатных моделей от OpenRouter API. */
   async getOpenRouterFreeModels(): Promise<{ models: ModelInfo[]; cached: boolean; count?: number; error?: string }> {
     return this.request('/models/openrouter-free');
   }
 
   // Sessions
+  /** Создаем сессию. */
   async createSession(
     agentType: string,
     userId = 'default',
@@ -87,6 +90,7 @@ class ApiClient {
   }
 
   // Chat Streaming
+  /** Реализуем потоковый чат. */
   async streamChat(
     agentType: string,
     sessionId: string,
@@ -134,10 +138,10 @@ class ApiClient {
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Parse SSE events from buffer
-        // Expected format: data: {...}\n\n
+        // Парсим SSE события из буфера
+        // Ожидаемый формат: data: {...}\n\n
         const lines = buffer.split('\n\n');
-        // Keep the last chunk if it's incomplete
+        // Сохраняем последний кусок, если он неполный
         buffer = lines.pop() || '';
 
         for (const line of lines) {
@@ -160,7 +164,7 @@ class ApiClient {
                 // Format system messages nicely
                 const content = event.content || '';
 
-                // Hide technical errors from user, show friendly messages
+                // Скрываем технические ошибки от пользователя, показываем дружелюбные сообщения
                 if (content.includes('Tool execution error') || content.includes('error')) {
                   // Don't show raw errors - just show status update
                   callbacks.onStatus('Processing...');
@@ -214,6 +218,7 @@ class ApiClient {
   }
 
   // File upload
+  /** Загружаем файл. */
   async uploadFile(
     agentType: string,
     sessionId: string,

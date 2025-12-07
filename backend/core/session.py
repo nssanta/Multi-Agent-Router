@@ -36,7 +36,7 @@ class SessionManager:
         model_id: Optional[str] = None,
     ) -> Dict:
         """
-        Создать новую сессию
+        Создаем новую сессию.
         
         Args:
             agent_type: Тип агента (dialog/mle/ds)
@@ -87,7 +87,7 @@ class SessionManager:
         }
     
     def get_session(self, session_id: str, agent_type: str) -> Dict:
-        """Получить сессию по ID"""
+        """Получаем сессию по ID."""
         session_path = self.workspace_dir / agent_type / session_id
         
         if not session_path.exists():
@@ -110,7 +110,7 @@ class SessionManager:
         content: str,
         files: Optional[List[str]] = None
     ):
-        """Добавить сообщение в историю"""
+        """Добавляем сообщение в историю."""
         session_path = self.workspace_dir / agent_type / session_id
         history_file = session_path / "history.json"
         
@@ -133,7 +133,7 @@ class SessionManager:
         agent_type: str,
         state_updates: Dict
     ):
-        """Обновить state сессии"""
+        """Обновляем state сессии."""
         session_path = self.workspace_dir / agent_type / session_id
         history_file = session_path / "history.json"
         
@@ -146,7 +146,7 @@ class SessionManager:
             json.dump(history, f, indent=2)
     
     def list_sessions(self, agent_type: Optional[str] = None) -> List[Dict]:
-        """Получить список всех сессий"""
+        """Получаем список всех сессий."""
         sessions = []
         
         if agent_type:
@@ -174,7 +174,7 @@ class SessionManager:
         return sessions
     
     def delete_session(self, session_id: str, agent_type: str):
-        """Удалить сессию"""
+        """Удаляем сессию."""
         session_path = self.workspace_dir / agent_type / session_id
         
         if session_path.exists():
