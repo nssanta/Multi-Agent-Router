@@ -1,5 +1,5 @@
 """
-Управление сессиями агентов
+Управление сессиями агентов.
 
 Каждая сессия:
 - Имеет уникальный ID
@@ -21,9 +21,13 @@ logger = logging.getLogger(__name__)
 
 
 class SessionManager:
-    """Менеджер сессий агентов"""
+    """Менеджер сессий агентов."""
     
     def __init__(self, workspace_dir: str = "./workspace/sessions"):
+        """
+        Инициализирует менеджер сессий.
+        :param workspace_dir: путь к директории для хранения сессий
+        """
         # Преобразуем в абсолютный путь
         self.workspace_dir = Path(workspace_dir).resolve()
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -36,15 +40,13 @@ class SessionManager:
         model_id: Optional[str] = None,
     ) -> Dict:
         """
-        Создаем новую сессию.
+        Создает новую сессию.
         
-        Args:
-            agent_type: Тип агента (dialog/mle/ds)
-            user_id: ID пользователя
-            initial_files: Список файлов для копирования в input/
-        
-        Returns:
-            Dict с session_id и path
+        :param agent_type: Тип агента (dialog/mle/ds)
+        :param user_id: ID пользователя
+        :param initial_files: Список файлов для копирования в input/
+        :param model_id: ID модели, если нужно привязать к конкретной
+        :return: Словарь с ID сессии, путем и типом агента
         """
         session_id = str(uuid.uuid4())
         session_path = self.workspace_dir / agent_type / session_id
@@ -87,7 +89,12 @@ class SessionManager:
         }
     
     def get_session(self, session_id: str, agent_type: str) -> Dict:
-        """Получаем сессию по ID."""
+        """
+        Получает сессию по ID.
+        :param session_id: ID сессии
+        :param agent_type: тип агента
+        :return: словарь с данными сессии
+        """
         session_path = self.workspace_dir / agent_type / session_id
         
         if not session_path.exists():
@@ -110,7 +117,14 @@ class SessionManager:
         content: str,
         files: Optional[List[str]] = None
     ):
-        """Добавляем сообщение в историю."""
+        """
+        Добавляет сообщение в историю.
+        :param session_id: ID сессии
+        :param agent_type: тип агента
+        :param role: роль отправителя (user/assistant/system)
+        :param content: текст сообщения
+        :param files: список прикрепленных файлов
+        """
         session_path = self.workspace_dir / agent_type / session_id
         history_file = session_path / "history.json"
         
@@ -133,7 +147,12 @@ class SessionManager:
         agent_type: str,
         state_updates: Dict
     ):
-        """Обновляем state сессии."""
+        """
+        Обновляет state сессии.
+        :param session_id: ID сессии
+        :param agent_type: тип агента
+        :param state_updates: словарь с обновлениями состояния
+        """
         session_path = self.workspace_dir / agent_type / session_id
         history_file = session_path / "history.json"
         
@@ -146,7 +165,11 @@ class SessionManager:
             json.dump(history, f, indent=2)
     
     def list_sessions(self, agent_type: Optional[str] = None) -> List[Dict]:
-        """Получаем список всех сессий."""
+        """
+        Получает список всех сессий.
+        :param agent_type: фильтр по типу агента
+        :return: список словарей с метаданными сессий
+        """
         sessions = []
         
         if agent_type:
@@ -174,7 +197,11 @@ class SessionManager:
         return sessions
     
     def delete_session(self, session_id: str, agent_type: str):
-        """Удаляем сессию."""
+        """
+        Удаляет сессию.
+        :param session_id: ID сессии
+        :param agent_type: тип агента
+        """
         session_path = self.workspace_dir / agent_type / session_id
         
         if session_path.exists():

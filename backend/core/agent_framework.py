@@ -1,7 +1,7 @@
 """
-Реализуем собственный Agent Framework - замену google.adk.agents.
+Реализует собственный Agent Framework - замену google.adk.agents.
 
-Реализуем основные классы:
+Реализует основные классы:
 - Agent: базовый агент с LLM
 - SequentialAgent: последовательное выполнение
 - ParallelAgent: параллельное выполнение
@@ -24,18 +24,26 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentState:
     """
-    Определяем состояние агента (замена CallbackContext из ADK).
-    
-    Храним данные между вызовами агентов и callbacks.
+    Определяет состояние агента (замена CallbackContext из ADK).
+    Хранит данные между вызовами агентов и callbacks.
     """
     data: Dict[str, Any] = field(default_factory=dict)
     
     def get(self, key: str, default=None):
-        """Получаем значение из state."""
+        """
+        Получает значение из state.
+        :param key: ключ
+        :param default: значение по умолчанию
+        :return: значение
+        """
         return self.data.get(key, default)
     
     def set(self, key: str, value):
-        """Устанавливаем значение в state."""
+        """
+        Устанавливает значение в state.
+        :param key: ключ
+        :param value: значение
+        """
         self.data[key] = value
     
     def __getitem__(self, key):
@@ -48,15 +56,18 @@ class AgentState:
         return key in self.data
     
     def to_dict(self) -> Dict:
-        """Экспортируем в dict для сохранения."""
+        """
+        Экспортирует в dict для сохранения.
+        :return: словарь данных
+        """
         return self.data.copy()
 
 
 class Agent:
     """
-    Определяем базовый класс агента (замена google.adk.agents.Agent).
+    Определяет базовый класс агента (замена google.adk.agents.Agent).
     
-    Поддерживаем:
+    Поддерживает:
     - Промты (instruction)
     - Callbacks (before/after)
     - Tools (пока не реализовано)
@@ -91,7 +102,10 @@ class Agent:
         self.state = AgentState()
     
     def _supports_native_tools(self) -> bool:
-        """Проверяем, поддерживает ли провайдер native tool calling."""
+        """
+        Проверяет, поддерживает ли провайдер native tool calling.
+        :return: True если поддерживает
+        """
         return (
             hasattr(self.llm_provider, 'supports_native_tools') and 
             self.llm_provider.supports_native_tools() and
@@ -99,14 +113,20 @@ class Agent:
         )
     
     def _get_instruction(self) -> str:
-        """Получаем instruction (может быть строкой или функцией)."""
+        """
+        Получает instruction (может быть строкой или функцией).
+        :return: текст инструкции
+        """
         if callable(self.instruction):
             return self.instruction(self.state)
         return self.instruction
     
     def run(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> str:
         """
-        Запускаем агента (синхронная обертка над streaming).
+        Запускает агента (синхронная обертка над streaming).
+        :param user_input: ввод пользователя
+        :param history: история диалога
+        :return: ответ агента
         """
         response_content = ""
         for event in self.run_stream(user_input, history):
@@ -116,13 +136,11 @@ class Agent:
 
     def run_stream(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> Iterator[Dict[str, str]]:
         """
-        Запускаем агента в режиме стриминга с поддержкой multi-turn loops.
+        Запускает агента в режиме стриминга с поддержкой multi-turn loops.
         
-        Yields:
-            Dict[str, str]: {
-                "type": "token" | "status" | "error" | "log",
-                "content": "..."
-            }
+        :param user_input: ввод пользователя
+        :param history: история диалога
+        :return: итератор событий
         """
         from datetime import datetime
         import json
@@ -201,7 +219,7 @@ class Agent:
                             "params": tc.get("args", {})
                         }
                         # Add visual indicator of tool call
-                        tool_indicator = f"\n\n```json\n{{\"tool\": \"{tc['name']}\", \"params\": {json.dumps(tc.get('args', {}))}}}\n```"
+                        tool_indicator = f"""\n\n```json\n{{"tool": "{tc['name']}", "params": {json.dumps(tc.get('args', {}))}}}\n```"""
                         full_response_text += tool_indicator
                         yield {"type": "token", "content": tool_indicator}
                 else:
@@ -398,7 +416,7 @@ Do not wrap the JSON in XML tags or other text. Ensure strict JSON syntax."""
         if matches:
             candidates.extend(matches)
             
-        # 2. If no code blocks, look for any balanced {...} that might be a tool call
+        # 2. If no code blocks, look for any balanced {{...}} that might be a tool call
         # We search for the outermost braces
         balance = 0
         start = -1
@@ -508,7 +526,7 @@ Do not wrap the JSON in XML tags or other text. Ensure strict JSON syntax."""
 
 class SequentialAgent:
     """
-    Выполняем субагентов последовательно.
+    Выполняет субагентов последовательно.
     
     Каждый агент получает результат предыдущего как input.
     """
@@ -529,7 +547,11 @@ class SequentialAgent:
         self.state = AgentState()
     
     def run(self, user_input: str) -> str:
-        """Запускаем последовательно всех субагентов."""
+        """
+        Запускает последовательно всех субагентов.
+        :param user_input: ввод пользователя
+        :return: итоговый результат
+        """
         logger.info(f"[{self.name}] Sequential start")
         
         if self.before_callback:
@@ -550,7 +572,7 @@ class SequentialAgent:
 
 class ParallelAgent:
     """
-    Выполняем субагентов параллельно.
+    Выполняет субагентов параллельно.
     
     Все агенты запускаются одновременно.
     """
@@ -569,7 +591,11 @@ class ParallelAgent:
         self.state = AgentState()
     
     def run(self, user_input: str) -> str:
-        """Запускаем параллельно всех субагентов."""
+        """
+        Запускает параллельно всех субагентов.
+        :param user_input: ввод пользователя
+        :return: объединенный результат
+        """
         logger.info(f"[{self.name}] Parallel start ({len(self.sub_agents)} agents)")
         
         def run_agent(agent):
@@ -585,9 +611,9 @@ class ParallelAgent:
 
 class LoopAgent:
     """
-    Выполняем агента циклически.
+    Выполняет агента циклически.
     
-    Повторяем агента N раз или пока не выполнится условие.
+    Повторяет агента N раз или пока не выполнится условие.
     """
     
     def __init__(
@@ -606,7 +632,11 @@ class LoopAgent:
         self.state = AgentState()
     
     def run(self, user_input: str) -> str:
-        """Запускаем агента в цикле."""
+        """
+        Запускает агента в цикле.
+        :param user_input: ввод пользователя
+        :return: итоговый результат
+        """
         logger.info(f"[{self.name}] Loop start (max {self.max_iterations} iterations)")
         
         if self.before_callback:

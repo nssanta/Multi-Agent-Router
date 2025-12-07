@@ -19,6 +19,7 @@ python-dotenv
 
 # Data science & ML (for code_executor)
 pandas
+pandas-ta  # Technical analysis for Crypto Agent
 numpy
 matplotlib
 scikit-learn

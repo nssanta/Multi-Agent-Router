@@ -10,6 +10,12 @@ import type {
 const API_BASE = '/api';
 
 class ApiClient {
+  /**
+   * Выполняет HTTP запрос к API.
+   * @param url - URL endpoint'а
+   * @param options - опции запроса
+   * @returns результат запроса (JSON)
+   */
   private async request<T>(url: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE}${url}`, {
       ...options,
@@ -31,25 +37,41 @@ class ApiClient {
   }
 
   // Agents
-  /** Получаем список агентов. */
+  /**
+   * Получает список доступных агентов.
+   * @returns объект со списком агентов
+   */
   async getAgents(): Promise<{ agents: Agent[] }> {
     return this.request('/agents');
   }
 
   // Models
-  /** Получаем список моделей. */
+  /**
+   * Получает список моделей.
+   * @param provider - фильтр по провайдеру (опционально)
+   * @returns объект со списком моделей
+   */
   async getModels(provider?: string): Promise<{ models: ModelInfo[] }> {
     const url = provider ? `/models?provider=${provider}` : '/models';
     return this.request(url);
   }
 
-  /** Получаем динамический список бесплатных моделей от OpenRouter API. */
+  /**
+   * Получает динамический список бесплатных моделей от OpenRouter API.
+   * @returns объект со списком моделей и метаданными кэширования
+   */
   async getOpenRouterFreeModels(): Promise<{ models: ModelInfo[]; cached: boolean; count?: number; error?: string }> {
     return this.request('/models/openrouter-free');
   }
 
   // Sessions
-  /** Создаем сессию. */
+  /**
+   * Создает новую сессию.
+   * @param agentType - тип агента
+   * @param userId - ID пользователя (по умолчанию 'default')
+   * @param modelId - ID модели (опционально)
+   * @returns созданная сессия
+   */
   async createSession(
     agentType: string,
     userId = 'default',
@@ -61,19 +83,42 @@ class ApiClient {
     });
   }
 
+  /**
+   * Получает список сессий.
+   * @param agentType - фильтр по типу агента (опционально)
+   * @returns объект со списком сессий
+   */
   async listSessions(agentType?: string): Promise<{ sessions: Session[] }> {
     const url = agentType ? `/sessions?agent_type=${agentType}` : '/sessions';
     return this.request(url);
   }
 
+  /**
+   * Получает историю конкретной сессии.
+   * @param agentType - тип агента
+   * @param sessionId - ID сессии
+   * @returns история сессии
+   */
   async getSession(agentType: string, sessionId: string): Promise<SessionHistory> {
     return this.request(`/sessions/${agentType}/${sessionId}`);
   }
 
+  /**
+   * Удаляет сессию.
+   * @param agentType - тип агента
+   * @param sessionId - ID сессии
+   * @returns статус успеха
+   */
   async deleteSession(agentType: string, sessionId: string): Promise<{ success: boolean }> {
     return this.request(`/sessions/${agentType}/${sessionId}`, { method: 'DELETE' });
   }
 
+  /**
+   * Получает список файлов сессии.
+   * @param agentType - тип агента
+   * @param sessionId - ID сессии
+   * @returns списки файлов (input и workspace)
+   */
   async listSessionFiles(agentType: string, sessionId: string): Promise<{
     session_id: string;
     input_files: SessionFile[];
@@ -82,6 +127,12 @@ class ApiClient {
     return this.request(`/sessions/${agentType}/${sessionId}/files`);
   }
 
+  /**
+   * Получает логи сессии.
+   * @param agentType - тип агента
+   * @param sessionId - ID сессии
+   * @returns список логов
+   */
   async getSessionLogs(agentType: string, sessionId: string): Promise<{
     session_id: string;
     logs: any[];
@@ -90,7 +141,14 @@ class ApiClient {
   }
 
   // Chat Streaming
-  /** Реализуем потоковый чат. */
+  /**
+   * Реализует потоковый чат с агентом.
+   * @param agentType - тип агента
+   * @param sessionId - ID сессии
+   * @param message - сообщение пользователя
+   * @param searchEnabled - включен ли поиск
+   * @param callbacks - функции обратного вызова для обработки потока
+   */
   async streamChat(
     agentType: string,
     sessionId: string,
@@ -119,7 +177,7 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        // Try to read error body
+        // Пробуем прочитать тело ошибки
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
@@ -148,7 +206,7 @@ class ApiClient {
           if (line.startsWith('data: ')) {
             const dataStr = line.slice(6).trim();
             if (dataStr === '[DONE]') {
-              continue; // or break?
+              continue; 
             }
             try {
               const event = JSON.parse(dataStr);
@@ -161,17 +219,17 @@ class ApiClient {
               } else if (event.type === 'error') {
                 callbacks.onError(event.content);
               } else if (event.type === 'system') {
-                // Format system messages nicely
+                // Красивое форматирование системных сообщений
                 const content = event.content || '';
 
                 // Скрываем технические ошибки от пользователя, показываем дружелюбные сообщения
                 if (content.includes('Tool execution error') || content.includes('error')) {
-                  // Don't show raw errors - just show status update
+                  // Не показываем "сырые" ошибки - только статус
                   callbacks.onStatus('Processing...');
                 } else if (content.includes('written successfully')) {
                   callbacks.onToken(`\n\n✅ ${content}\n\n`);
                 } else if (content.includes('File Content')) {
-                  // Shorten file content display
+                  // Обрезаем длинный вывод контента файла
                   const shortContent = content.length > 500
                     ? content.substring(0, 500) + '\n... (truncated)'
                     : content;
@@ -181,16 +239,16 @@ class ApiClient {
                 } else if (content.includes('Execution Result')) {
                   callbacks.onToken(`\n\n▶️ ${content}\n\n`);
                 } else if (content.includes('not valid JSON')) {
-                  // JSON error - just show status
+                  // Ошибка JSON - просто статус
                   callbacks.onStatus('Retrying...');
                 } else if (content.includes('Aborting turn')) {
                   callbacks.onToken(`\n\n⚠️ Agent stopped: too many attempts\n\n`);
                 } else {
-                  // Other system messages - show as-is but formatted
+                  // Другие системные сообщения - показываем как есть, но с иконкой
                   callbacks.onToken(`\n\n🔧 ${content}\n\n`);
                 }
               } else if (event.type === 'log') {
-                // Only log to console, don't show to user
+                // Логи только в консоль
                 console.log('Agent Log:', event.content);
               }
             } catch (e) {
@@ -208,6 +266,10 @@ class ApiClient {
   }
 
   // Legacy Chat (Deprecated, use streamChat)
+  /**
+   * Отправляет сообщение (Устарело).
+   * @deprecated Используйте streamChat
+   */
   async sendMessage(
     agentType: string,
     sessionId: string,
@@ -218,7 +280,13 @@ class ApiClient {
   }
 
   // File upload
-  /** Загружаем файл. */
+  /**
+   * Загружает файл.
+   * @param agentType - тип агента
+   * @param sessionId - ID сессии
+   * @param file - файл для загрузки
+   * @returns имя и путь загруженного файла
+   */
   async uploadFile(
     agentType: string,
     sessionId: string,

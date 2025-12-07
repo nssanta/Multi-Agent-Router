@@ -1,5 +1,5 @@
 """
-Dialog Agent - продвинутый чат-ассистент с ReAct подходом
+Dialog Agent - продвинутый чат-ассистент с ReAct подходом.
 
 Функции:
 - Отвечает на вопросы
@@ -28,12 +28,21 @@ def create_dialog_agent(
     llm_provider: BaseLLMProvider,
     session_path: Path
 ) -> Agent:
-    """Создаем Dialog Agent с веб-поиском."""
+    """
+    Создает Dialog Agent с веб-поиском.
+    :param llm_provider: провайдер LLM
+    :param session_path: путь к директории сессии
+    :return: объект агента
+    """
     
     code_executor = LocalCodeExecutor(session_path)
 
     def get_instruction_with_context(state):
-        """Динамически добавляем дату, список файлов и статус поиска в промпт."""
+        """
+        Динамически добавляет дату, список файлов и статус поиска в промпт.
+        :param state: состояние агента
+        :return: инструкция с контекстом
+        """
         search_enabled = state.get("search_enabled", True)
         
         # Текущая дата и время UTC
@@ -73,7 +82,7 @@ When analyzing data:
 Let's help the user effectively!"""
         
         # Добавить список файлов если есть
-        input_files = list(Path(session_path / "input").glob("*"))
+        input_files = list(Path(session_path / "input").glob("* "))
         if input_files:
             files_list = "\n".join([f"- {f.name}" for f in input_files])
             return f"{base_instruction}\n\n**Available Files in Current Session:**\n{files_list}"
@@ -81,19 +90,26 @@ Let's help the user effectively!"""
         return base_instruction
 
     def before_run(state):
-        """Выполняем обработку перед запуском агента."""
+        """
+        Выполняет обработку перед запуском агента.
+        :param state: состояние агента
+        """
         logger.info(f"[DialogAgent] Starting new interaction")
         # Сохранить текущий user input для использования в after_run
         # (будет установлено в agent_framework.py перед вызовом before_callback)
     
     def after_run(state, response):
         """
-        Обрабатываем ответ после получения (ITERATIVE multi-turn reasoning):
-        1. Выполняем веб-поиск если нужно
-        2. Читаем содержимое найденных страниц (ТОП-3)
-        3. Делаем ВТОРОЙ ВЫЗОВ LLM для анализа прочитанного
-        4. Если нужен еще раунд - повторяем (до 3 циклов)
-        5. Возвращаем финальный ответ с источниками
+        Обрабатывает ответ после получения (ITERATIVE multi-turn reasoning):
+        1. Выполняет веб-поиск если нужно
+        2. Читает содержимое найденных страниц (ТОП-3)
+        3. Делает ВТОРОЙ ВЫЗОВ LLM для анализа прочитанного
+        4. Если нужен еще раунд - повторяет (до 3 циклов)
+        5. Возвращает финальный ответ с источниками
+        
+        :param state: состояние агента
+        :param response: ответ LLM
+        :return: финальный ответ
         """
         
         # Проверить включен ли поиск

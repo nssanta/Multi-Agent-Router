@@ -1,5 +1,5 @@
 """
-Coder Agent - AI ассистент для программирования
+Coder Agent - AI ассистент для программирования.
 
 Использует:
 - Tree of Thoughts для анализа сложных задач
@@ -33,18 +33,15 @@ def create_coder_agent(
     verifier_model_id: Optional[str] = None
 ) -> Agent:
     """
-    Создаем Coder Agent с полным функционалом.
+    Создает Coder Agent с полным функционалом.
     
-    Args:
-        llm_provider: LLM провайдер
-        session_path: Путь к директории сессии
-        use_tree_of_thoughts: Включить ToT для сложных задач
-        num_branches: Количество веток мышления (по умолчанию 2)
-        use_verifier: Включить верификацию кода
-        verifier_model_id: ID модели для верификатора (None = та же модель)
-        
-    Returns:
-        Сконфигурированный Agent
+    :param llm_provider: LLM провайдер
+    :param session_path: Путь к директории сессии
+    :param use_tree_of_thoughts: Включить ToT для сложных задач
+    :param num_branches: Количество веток мышления (по умолчанию 2)
+    :param use_verifier: Включить верификацию кода
+    :param verifier_model_id: ID модели для верификатора (None = та же модель)
+    :return: Сконфигурированный Agent
     """
     
     # Инициализация компонентов
@@ -55,7 +52,11 @@ def create_coder_agent(
     tools = tool_registry.get_tools_for_agent("coder", session_path=str(session_path))
     
     def get_instruction_with_context(state: AgentState) -> str:
-        """Динамически добавляем контекст в промпт."""
+        """
+        Динамически добавляет контекст в промпт.
+        :param state: состояние агента
+        :return: инструкция с контекстом
+        """
         
         base_instruction = get_coder_instruction()
         
@@ -107,7 +108,10 @@ def create_coder_agent(
         return base_instruction + context
     
     def before_run(state: AgentState) -> None:
-        """Выполняем подготовку перед запуском."""
+        """
+        Выполняет подготовку перед запуском.
+        :param state: состояние агента
+        """
         
         # Сохраняем компоненты в state для использования в after_run
         state.set("tot", tot)
@@ -123,11 +127,15 @@ def create_coder_agent(
     
     def after_run(state: AgentState, response: str) -> str:
         """
-        Выполняем пост-обработку ответа агента:
+        Выполняет пост-обработку ответа агента:
         1. Ищем команды инструментов в ответе
         2. Выполняем инструменты
         3. Если есть код - верифицируем
         4. Если сложная задача - запускаем ToT
+        
+        :param state: состояние агента
+        :param response: ответ LLM
+        :return: обновленный ответ
         """
         
         original_response = response
@@ -172,8 +180,7 @@ def create_coder_agent(
 {tot_result.final_solution}
 
 ### Оценка:
-{tot_result.evaluation[:500]}...
-"""
+{tot_result.evaluation[:500]}...\n"""
                 actions.append({
                     "type": "tree_of_thoughts",
                     "branches": len(tot_result.branches),
@@ -194,7 +201,7 @@ def create_coder_agent(
             verification_results = []
             
             for lang, code in code_blocks:
-                if lang in ["python", "py", ""]:  # По умолчанию проверяем Python
+                if lang in ["python", "py", ""]:
                     try:
                         result = verifier_instance.verify(code, "python", user_message)
                         verification_results.append((lang, result))
@@ -215,7 +222,7 @@ def create_coder_agent(
                     response += f"\n### {lang or 'python'}: {result.summary}\n"
                     if result.issues:
                         response += "Найденные проблемы:\n"
-                        for issue in result.issues[:5]:  # Первые 5
+                        for issue in result.issues[:5]:
                             line_info = f" (строка {issue.line})" if issue.line else ""
                             response += f"- [{issue.severity.value}]{line_info}: {issue.message}\n"
         
@@ -306,10 +313,10 @@ def create_coder_agent(
 
 def _extract_tool_commands(text: str) -> List[Dict[str, Any]]:
     """
-    Извлекаем команды инструментов из текста.
-    
-    Используем новую универсальную систему ToolCallExtractor,
-    которая поддерживает множество форматов ответов LLM.
+    Извлекает команды инструментов из текста.
+    Использует новую универсальную систему ToolCallExtractor.
+    :param text: текст ответа
+    :return: список команд
     """
     from backend.core.tool_calling import ToolCallExtractor
     
@@ -334,7 +341,12 @@ def _execute_tool(
     command: Dict[str, Any], 
     tools: List[Any]
 ) -> ToolResult:
-    """Выполняем инструмент."""
+    """
+    Выполняет инструмент.
+    :param command: словарь с командой
+    :param tools: список доступных инструментов
+    :return: результат выполнения
+    """
     
     tool_name = command.get("tool", "")
     params = command.get("params", {})
@@ -360,7 +372,12 @@ def _format_tool_results(
     commands: List[Dict], 
     results: List[ToolResult]
 ) -> str:
-    """Форматируем результаты выполнения инструментов."""
+    """
+    Форматирует результаты выполнения инструментов.
+    :param commands: список команд
+    :param results: список результатов
+    :return: отформатированная строка
+    """
     
     formatted = []
     
@@ -389,7 +406,12 @@ def _format_tool_results(
 
 
 def _should_use_tot(user_message: str, response: str) -> bool:
-    """Определяем, нужен ли Tree of Thoughts."""
+    """
+    Определяет, нужен ли Tree of Thoughts.
+    :param user_message: сообщение пользователя
+    :param response: ответ агента
+    :return: True если нужен ToT
+    """
     
     # Эвристики:
     # 1. Длинное сообщение пользователя
@@ -416,7 +438,11 @@ def _should_use_tot(user_message: str, response: str) -> bool:
 
 
 def _extract_code_blocks(text: str) -> List[tuple]:
-    """Извлекаем блоки кода из markdown."""
+    """
+    Извлекает блоки кода из markdown.
+    :param text: текст markdown
+    :return: список кортежей (язык, код)
+    """
     
     pattern = r'```(\w*)\n(.*?)```'
     matches = re.findall(pattern, text, re.DOTALL)
@@ -425,7 +451,11 @@ def _extract_code_blocks(text: str) -> List[tuple]:
 
 
 def _get_context(state: AgentState) -> str:
-    """Получаем контекст сессии для ToT."""
+    """
+    Получает контекст сессии для ToT.
+    :param state: состояние агента
+    :return: строка контекста
+    """
     
     session_path = state.get("session_path", "")
     history = state.get("history", [])
@@ -450,7 +480,13 @@ def _log_agent_run(
     response: str,
     actions: List[Dict]
 ) -> None:
-    """Логируем запуск агента."""
+    """
+    Логирует запуск агента.
+    :param session_path: путь к сессии
+    :param user_message: сообщение пользователя
+    :param response: ответ агента
+    :param actions: список действий
+    """
     
     logs_dir = session_path / "logs"
     logs_dir.mkdir(exist_ok=True)

@@ -1,4 +1,5 @@
-"""Реализуем модуль конфигурации моделей LLM.
+"""
+Реализует модуль конфигурации моделей LLM.
 
 Задачи:
 - Загрузка `backend/models.json` как единого источника правды по моделям
@@ -22,14 +23,14 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "models.json"
 
 
 class ModelsConfigError(RuntimeError):
-  """Определяем ошибку конфигурации моделей (models.json)."""
+  """Определяет ошибку конфигурации моделей (models.json)."""
 
 
 @lru_cache(maxsize=1)
 def load_models_config() -> Dict[str, Any]:
-  """Загружаем и кэшируем конфиг моделей из models.json.
-
-  Возвращает словарь с ключами `providers` и `models`.
+  """
+  Загружает и кэширует конфиг моделей из models.json.
+  :return: Словарь с ключами `providers` и `models`.
   """
 
   if not CONFIG_PATH.exists():
@@ -78,21 +79,32 @@ def load_models_config() -> Dict[str, Any]:
 
 
 def get_all_models() -> List[Dict[str, Any]]:
-  """Возвращаем список всех моделей (как есть в конфиге)."""
+  """
+  Возвращает список всех моделей (как есть в конфиге).
+  :return: список словарей моделей
+  """
 
   config = load_models_config()
   return config.get("models", [])
 
 
 def get_models_for_provider(provider: str) -> List[Dict[str, Any]]:
-  """Возвращаем модели для конкретного провайдера."""
+  """
+  Возвращает модели для конкретного провайдера.
+  :param provider: имя провайдера
+  :return: список моделей
+  """
 
   provider = provider.lower()
   return [m for m in get_all_models() if m.get("provider", "").lower() == provider]
 
 
 def get_model_by_id(model_id: str) -> Optional[Dict[str, Any]]:
-  """Ищем модель по её id или возвращаем None."""
+  """
+  Ищет модель по её id.
+  :param model_id: ID модели
+  :return: словарь модели или None
+  """
 
   for m in get_all_models():
     if m.get("id") == model_id:
@@ -101,7 +113,8 @@ def get_model_by_id(model_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_default_model(provider: Optional[str] = None) -> Dict[str, Any]:
-  """Получаем дефолтную модель.
+  """
+  Получает дефолтную модель.
 
   Выбор происходит по правилам:
   1) Если передан `provider` — работаем в его рамках, иначе берём `LLM_PROVIDER` из env (gemini/openrouter/...)
@@ -109,6 +122,9 @@ def get_default_model(provider: Optional[str] = None) -> Dict[str, Any]:
   3) Иначе ищем в конфиге модель с `is_default=true` для этого провайдера
   4) Если нет is_default — берём первую модель данного провайдера
   5) Если и её нет — бросаем ModelsConfigError
+
+  :param provider: опциональный провайдер
+  :return: словарь модели
   """
 
   config = load_models_config()
@@ -137,9 +153,11 @@ def get_default_model(provider: Optional[str] = None) -> Dict[str, Any]:
 
 
 def get_max_context_tokens(model_id: str) -> int:
-  """Получаем максимальный размер контекста для модели.
-
+  """
+  Получает максимальный размер контекста для модели.
   Если модель не найдена или поле отсутствует — вернуть разумный дефолт (128k).
+  :param model_id: ID модели
+  :return: максимальное количество токенов
   """
 
   model = get_model_by_id(model_id)

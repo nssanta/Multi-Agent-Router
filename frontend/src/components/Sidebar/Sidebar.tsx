@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       setSessions(sessionsData.sessions);
       // Фильтруем нежелательных агентов (DS, MLE) пока что
-      const allowedAgents = ['coder', 'dialog'];
+      const allowedAgents = ['coder', 'dialog', 'crypto'];
       const filteredAgents = (agentsData.agents || []).filter((a: Agent) => allowedAgents.includes(a.id));
       setAgents(filteredAgents);
 

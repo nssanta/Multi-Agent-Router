@@ -15,6 +15,7 @@ from backend.core.llm_provider import get_llm_provider_for_model
 from backend.core import config as models_config
 from backend.agents.dialog.agent import create_dialog_agent
 from backend.agents.coder.agent import create_coder_agent
+from backend.agents.crypto.agent import create_crypto_analyst_agent
 
 app = FastAPI()
 
@@ -44,7 +45,10 @@ class CreateSessionRequest(BaseModel):
 
 @app.on_event("startup")
 def startup():
-    """Выполняем инициализацию при старте."""
+    """
+    Выполняет инициализацию при старте приложения.
+    Создает необходимые директории и проверяет конфигурацию моделей.
+    """
 
     # Создаем рабочую директорию, если ее нет
     Path("./workspace/sessions").mkdir(parents=True, exist_ok=True)
@@ -92,7 +96,11 @@ def startup():
 
 @app.post("/api/sessions")
 def create_session(req: CreateSessionRequest):
-    """Создаем новую сессию."""
+    """
+    Создает новую сессию для указанного агента.
+    :param req: данные запроса (тип агента, user_id, модель)
+    :return: объект созданной сессии
+    """
     # Если модель не указана явно, берем дефолт для текущего провайдера
     model_id = req.model_id
     if not model_id:
@@ -109,21 +117,34 @@ def create_session(req: CreateSessionRequest):
 
 @app.get("/api/sessions")
 def list_sessions(agent_type: str = None):
-    """Получаем список всех сессий."""
+    """
+    Получает список всех активных сессий.
+    :param agent_type: фильтр по типу агента (опционально)
+    :return: словарь со списком сессий
+    """
     sessions = session_manager.list_sessions(agent_type)
     return {"sessions": sessions}
 
 
 @app.get("/api/sessions/{agent_type}/{session_id}")
 def get_session(agent_type: str, session_id: str):
-    """Получаем сессию по ID."""
+    """
+    Получает данные конкретной сессии по ID.
+    :param agent_type: тип агента
+    :param session_id: идентификатор сессии
+    :return: объект сессии
+    """
     session = session_manager.get_session(session_id, agent_type)
     return session
 
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    """Отправляем сообщение агенту."""
+    """
+    Обрабатывает сообщение пользователя и отправляет ответ агента (streaming).
+    :param req: данные запроса (id сессии, сообщение, настройки)
+    :return: потоковый ответ (SSE) с событиями от агента
+    """
     
     # Получаем session path и историю
     try:
@@ -177,6 +198,8 @@ def chat(req: ChatRequest):
             use_verifier=coder_config.get("use_verifier", True),
             verifier_model_id=coder_config.get("verifier_model_id"),
         )
+    elif req.agent_type == "crypto":
+        agent = create_crypto_analyst_agent(llm_provider, session_path)
     else:
         raise HTTPException(400, f"Agent type {req.agent_type} not implemented yet")
 
@@ -247,7 +270,7 @@ def chat(req: ChatRequest):
         )
         
         # Yield usage event
-        yield f"data: {json.dumps({'type': 'usage', 'content': new_usage})}\n\n"
+        yield f"data: {json.dumps({'type': 'usage', 'content': new_usage})}\\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -255,10 +278,10 @@ def chat(req: ChatRequest):
 
 @app.get("/api/models")
 def list_models(provider: Optional[str] = None):
-    """Возвращаем список доступных LLM-моделей.
-
-    Если передан параметр `provider`, фильтруем список по нему
-    (например, `provider=openrouter`).
+    """
+    Возвращает список доступных LLM-моделей.
+    :param provider: фильтр по провайдеру (например, 'openrouter')
+    :return: словарь со списком моделей
     """
 
     if provider:
@@ -272,10 +295,10 @@ def list_models(provider: Optional[str] = None):
 @app.get("/api/models/openrouter-free")
 async def get_openrouter_free_models():
     """
-    Динамически получаем список бесплатных моделей от OpenRouter API.
-    
+    Динамически получает список бесплатных моделей от OpenRouter API.
     Фильтруем модели где pricing.prompt = "0" и pricing.completion = "0".
     Кэшируем результат на 1 час.
+    :return: список бесплатных моделей с метаданными
     """
     import requests
     import time
@@ -331,7 +354,13 @@ async def get_openrouter_free_models():
 
 @app.post("/api/upload/{agent_type}/{session_id}")
 async def upload_file(agent_type: str, session_id: str, file: UploadFile = File(...)):
-    """Загружаем файл в сессию."""
+    """
+    Загружает файл в сессию.
+    :param agent_type: тип агента
+    :param session_id: идентификатор сессии
+    :param file: загружаемый файл
+    :return: информация о загруженном файле
+    """
     
     try:
         session = session_manager.get_session(session_id, agent_type)
@@ -350,7 +379,12 @@ async def upload_file(agent_type: str, session_id: str, file: UploadFile = File(
 
 @app.delete("/api/sessions/{agent_type}/{session_id}")
 def delete_session(agent_type: str, session_id: str):
-    """Удаляем сессию."""
+    """
+    Удаляет сессию.
+    :param agent_type: тип агента
+    :param session_id: идентификатор сессии
+    :return: результат операции
+    """
     try:
         session_manager.delete_session(session_id, agent_type)
         return {"success": True, "message": f"Session {session_id} deleted"}
@@ -360,7 +394,12 @@ def delete_session(agent_type: str, session_id: str):
 
 @app.get("/api/sessions/{agent_type}/{session_id}/files")
 def list_session_files(agent_type: str, session_id: str):
-    """Получаем список файлов в сессии."""
+    """
+    Получает список файлов в сессии (input и workspace).
+    :param agent_type: тип агента
+    :param session_id: идентификатор сессии
+    :return: списки файлов
+    """
     try:
         session = session_manager.get_session(session_id, agent_type)
         session_path = Path(session["path"])
@@ -402,7 +441,12 @@ def list_session_files(agent_type: str, session_id: str):
 
 @app.get("/api/sessions/{agent_type}/{session_id}/logs")
 def get_session_logs(agent_type: str, session_id: str):
-    """Получаем логи сессии."""
+    """
+    Получает логи сессии.
+    :param agent_type: тип агента
+    :param session_id: идентификатор сессии
+    :return: список логов
+    """
     try:
         session = session_manager.get_session(session_id, agent_type)
         session_path = Path(session["path"])
@@ -434,11 +478,15 @@ def get_session_logs(agent_type: str, session_id: str):
 
 @app.get("/api/agents")
 def list_agents():
-    """Возвращаем список доступных агентов."""
+    """
+    Возвращает список доступных агентов.
+    :return: словарь со списком агентов
+    """
     return {
         "agents": [
             {"id": "dialog", "name": "Dialog", "description": "Chat assistant with web search"},
             {"id": "coder", "name": "Coder", "description": "AI programming assistant with Tree of Thoughts"},
+            {"id": "crypto", "name": "Crypto Analyst", "description": "Cryptocurrency analysis with technical indicators and orderbook"},
             {"id": "mle", "name": "MLE", "description": "Machine Learning Engineering (Coming soon)"},
             {"id": "ds", "name": "DS", "description": "Data Science (Coming soon)"}
         ]
