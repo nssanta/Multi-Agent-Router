@@ -144,12 +144,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="input mb-3"
           disabled={loading || models.length === 0}
         >
-          {models.map(model => (
-            <option key={model.id} value={model.id}>
-              {model.display_name} ({model.provider})
-            </option>
-          ))}
+          {models.map(model => {
+            // Для Coder показываем индикатор native tools
+            const nativeIndicator = selectedAgent === 'coder'
+              ? (model.native_tools ? '✅ ' : '⚠️ ')
+              : '';
+            return (
+              <option key={model.id} value={model.id}>
+                {nativeIndicator}{model.display_name} ({model.provider})
+              </option>
+            );
+          })}
         </select>
+        {/* Native tools hint for Coder */}
+        {selectedAgent === 'coder' && (
+          <div className="text-xs text-dark-muted mb-2">
+            ✅ = native tools &nbsp; ⚠️ = regex fallback
+          </div>
+        )}
 
         {/* Coder Settings - показываем только для coder agent */}
         {selectedAgent === 'coder' && (

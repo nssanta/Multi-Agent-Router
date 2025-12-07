@@ -46,6 +46,7 @@
 - **Code Execution** — Run Python in sandboxed Docker environment
 - **Multi-File Projects** — Import between files, build complete projects
 - **Native Tool Calling** — Gemini 2.5 Pro uses native function calling
+- **Tool Support Indicator** — ✅/⚠️ shows which models support native tools
 
 **Example:**
 ```

@@ -74,6 +74,8 @@ export interface ModelInfo {
   tags?: string[];
   /** Является ли дефолтной */
   is_default?: boolean;
+  /** Поддержка Native Tool Calling */
+  native_tools?: boolean;
 }
 
 /** Детальная информация об использовании токенов за ход и за сессию */

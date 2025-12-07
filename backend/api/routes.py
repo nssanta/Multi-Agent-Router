@@ -303,6 +303,25 @@ async def get_openrouter_free_models():
     import requests
     import time
     
+    # Модели с поддержкой Native Tool Calling (проверять по префиксу)
+    NATIVE_TOOLS_PREFIXES = [
+        "google/gemini",
+        "meta-llama/llama-3.3",
+        "meta-llama/llama-3.1",
+        "qwen/qwen-2.5",
+        "qwen/qwen2.5",
+        "mistralai/mistral-small",
+        "mistralai/mistral-large",
+        "anthropic/claude",
+        "openai/gpt-4",
+        "openai/gpt-3.5",
+    ]
+    
+    def has_native_tools(model_id: str) -> bool:
+        """Проверяем, поддерживает ли модель native tool calling."""
+        model_id_lower = model_id.lower()
+        return any(prefix in model_id_lower for prefix in NATIVE_TOOLS_PREFIXES)
+    
     # Простой кеш в памяти
     cache_key = "_openrouter_free_cache"
     cache_time_key = "_openrouter_free_cache_time"
@@ -329,13 +348,15 @@ async def get_openrouter_free_models():
             pricing = model.get("pricing", {})
             # Free models have "0" pricing for both prompt and completion
             if pricing.get("prompt") == "0" and pricing.get("completion") == "0":
+                model_id = model.get("id", "")
                 free_models.append({
-                    "id": model.get("id"),
-                    "display_name": model.get("name", model.get("id")),
+                    "id": model_id,
+                    "display_name": model.get("name", model_id),
                     "provider": "openrouter",
                     "max_context_tokens": model.get("context_length", 4096),
                     "tags": ["free", "dynamic"],
                     "description": model.get("description", ""),
+                    "native_tools": has_native_tools(model_id),
                 })
         
         # Сортируем по имени

@@ -27,8 +27,12 @@
       "benchmark_score": 9.0,
       "user_reviews_score": 8.8,
       "overall_power": 9.0,
-      "tags": ["gemini", "native"],
-      "is_default": true
+      "tags": [
+        "gemini",
+        "native"
+      ],
+      "is_default": true,
+      "native_tools": true
     },
     {
       "id": "deepseek/deepseek-chat-v3.1:free",
@@ -39,7 +43,10 @@
       "benchmark_score": 8.8,
       "user_reviews_score": 8.9,
       "overall_power": 8.8,
-      "tags": ["openrouter", "free"],
+      "tags": [
+        "openrouter",
+        "free"
+      ],
       "is_default": true
     },
     {
@@ -51,7 +58,10 @@
       "benchmark_score": 8.2,
       "user_reviews_score": 8.5,
       "overall_power": 8.3,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "kwaipilot/kat-coder-pro:free",
@@ -62,7 +72,11 @@
       "benchmark_score": 7.8,
       "user_reviews_score": 7.9,
       "overall_power": 7.8,
-      "tags": ["openrouter", "free", "coding"]
+      "tags": [
+        "openrouter",
+        "free",
+        "coding"
+      ]
     },
     {
       "id": "z-ai/glm-4.5-air:free",
@@ -73,7 +87,10 @@
       "benchmark_score": 7.5,
       "user_reviews_score": 7.6,
       "overall_power": 7.5,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "tngtech/deepseek-r1t-chimera:free",
@@ -84,7 +101,10 @@
       "benchmark_score": 8.1,
       "user_reviews_score": 8.4,
       "overall_power": 8.2,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "deepseek/deepseek-chat-v3-0324:free",
@@ -95,7 +115,10 @@
       "benchmark_score": 8.7,
       "user_reviews_score": 8.8,
       "overall_power": 8.7,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "deepseek/deepseek-r1-0528:free",
@@ -106,7 +129,10 @@
       "benchmark_score": 8.6,
       "user_reviews_score": 8.7,
       "overall_power": 8.6,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "qwen/qwen3-coder:free",
@@ -117,7 +143,11 @@
       "benchmark_score": 9.4,
       "user_reviews_score": 9.5,
       "overall_power": 9.4,
-      "tags": ["openrouter", "free", "coding"]
+      "tags": [
+        "openrouter",
+        "free",
+        "coding"
+      ]
     },
     {
       "id": "google/gemma-3-27b-it:free",
@@ -128,7 +158,10 @@
       "benchmark_score": 8.0,
       "user_reviews_score": 8.1,
       "overall_power": 8.0,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "meta-llama/llama-3.3-70b-instruct:free",
@@ -139,7 +172,11 @@
       "benchmark_score": 8.5,
       "user_reviews_score": 8.6,
       "overall_power": 8.5,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ],
+      "native_tools": true
     },
     {
       "id": "google/gemini-2.0-flash-exp:free",
@@ -150,7 +187,12 @@
       "benchmark_score": 9.2,
       "user_reviews_score": 9.0,
       "overall_power": 9.1,
-      "tags": ["openrouter", "free", "flash"]
+      "tags": [
+        "openrouter",
+        "free",
+        "flash"
+      ],
+      "native_tools": true
     },
     {
       "id": "meituan/longcat-flash-chat:free",
@@ -161,7 +203,11 @@
       "benchmark_score": 7.4,
       "user_reviews_score": 7.5,
       "overall_power": 7.4,
-      "tags": ["openrouter", "free", "flash"]
+      "tags": [
+        "openrouter",
+        "free",
+        "flash"
+      ]
     },
     {
       "id": "deepseek/deepseek-r1:free",
@@ -172,7 +218,10 @@
       "benchmark_score": 8.4,
       "user_reviews_score": 8.5,
       "overall_power": 8.4,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "microsoft/mai-ds-r1:free",
@@ -183,7 +232,10 @@
       "benchmark_score": 8.3,
       "user_reviews_score": 8.2,
       "overall_power": 8.2,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "openai/gpt-oss-20b:free",
@@ -194,7 +246,10 @@
       "benchmark_score": 7.9,
       "user_reviews_score": 8.0,
       "overall_power": 7.9,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "qwen/qwen3-235b-a22b:free",
@@ -205,7 +260,10 @@
       "benchmark_score": 9.3,
       "user_reviews_score": 9.4,
       "overall_power": 9.3,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "nvidia/nemotron-nano-12b-v2-vl:free",
@@ -216,7 +274,10 @@
       "benchmark_score": 7.7,
       "user_reviews_score": 7.8,
       "overall_power": 7.7,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "deepseek/deepseek-r1-distill-llama-70b:free",
@@ -227,7 +288,10 @@
       "benchmark_score": 7.6,
       "user_reviews_score": 7.7,
       "overall_power": 7.6,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "deepseek/deepseek-r1-0528-qwen3-8b:free",
@@ -238,9 +302,11 @@
       "benchmark_score": 7.2,
       "user_reviews_score": 7.3,
       "overall_power": 7.2,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
-    
     {
       "id": "qwen/qwen3-14b:free",
       "provider": "openrouter",
@@ -250,7 +316,10 @@
       "benchmark_score": 8.1,
       "user_reviews_score": 8.2,
       "overall_power": 8.1,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "mistralai/mistral-nemo:free",
@@ -261,7 +330,10 @@
       "benchmark_score": 7.9,
       "user_reviews_score": 8.0,
       "overall_power": 7.9,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "mistralai/mistral-small-3.1-24b-instruct:free",
@@ -272,7 +344,11 @@
       "benchmark_score": 8.2,
       "user_reviews_score": 8.3,
       "overall_power": 8.2,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ],
+      "native_tools": true
     },
     {
       "id": "alibaba/tongyi-deepresearch-30b-a3b:free",
@@ -283,7 +359,11 @@
       "benchmark_score": 7.8,
       "user_reviews_score": 7.9,
       "overall_power": 7.8,
-      "tags": ["openrouter", "free", "research"]
+      "tags": [
+        "openrouter",
+        "free",
+        "research"
+      ]
     },
     {
       "id": "mistralai/mistral-small-3.2-24b-instruct:free",
@@ -294,7 +374,11 @@
       "benchmark_score": 8.3,
       "user_reviews_score": 8.4,
       "overall_power": 8.3,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ],
+      "native_tools": true
     },
     {
       "id": "qwen/qwen3-30b-a3b:free",
@@ -305,7 +389,10 @@
       "benchmark_score": 8.4,
       "user_reviews_score": 8.5,
       "overall_power": 8.4,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "mistralai/mistral-7b-instruct:free",
@@ -316,7 +403,10 @@
       "benchmark_score": 6.8,
       "user_reviews_score": 7.0,
       "overall_power": 6.9,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
@@ -327,7 +417,10 @@
       "benchmark_score": 7.5,
       "user_reviews_score": 7.6,
       "overall_power": 7.5,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "nvidia/nemotron-nano-9b-v2:free",
@@ -338,7 +431,10 @@
       "benchmark_score": 7.3,
       "user_reviews_score": 7.4,
       "overall_power": 7.3,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "qwen/qwen-2.5-72b-instruct:free",
@@ -349,7 +445,11 @@
       "benchmark_score": 8.6,
       "user_reviews_score": 8.7,
       "overall_power": 8.6,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ],
+      "native_tools": true
     },
     {
       "id": "qwen/qwen2.5-vl-32b-instruct:free",
@@ -360,7 +460,11 @@
       "benchmark_score": 7.7,
       "user_reviews_score": 7.8,
       "overall_power": 7.7,
-      "tags": ["openrouter", "free", "vision"]
+      "tags": [
+        "openrouter",
+        "free",
+        "vision"
+      ]
     },
     {
       "id": "nousresearch/hermes-3-llama-3.1-405b:free",
@@ -371,7 +475,10 @@
       "benchmark_score": 9.5,
       "user_reviews_score": 9.3,
       "overall_power": 9.4,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "qwen/qwen-2.5-coder-32b-instruct:free",
@@ -382,7 +489,12 @@
       "benchmark_score": 8.7,
       "user_reviews_score": 8.8,
       "overall_power": 8.7,
-      "tags": ["openrouter", "free", "coding"]
+      "tags": [
+        "openrouter",
+        "free",
+        "coding"
+      ],
+      "native_tools": true
     },
     {
       "id": "moonshotai/kimi-k2:free",
@@ -393,7 +505,10 @@
       "benchmark_score": 9.0,
       "user_reviews_score": 9.1,
       "overall_power": 9.0,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "mistralai/mistral-small-24b-instruct-2501:free",
@@ -404,7 +519,10 @@
       "benchmark_score": 8.0,
       "user_reviews_score": 8.1,
       "overall_power": 8.0,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "arliai/qwq-32b-arliai-rpr-v1:free",
@@ -415,7 +533,10 @@
       "benchmark_score": 7.4,
       "user_reviews_score": 7.5,
       "overall_power": 7.4,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "meta-llama/llama-3.2-3b-instruct:free",
@@ -426,7 +547,10 @@
       "benchmark_score": 6.5,
       "user_reviews_score": 6.7,
       "overall_power": 6.6,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "qwen/qwen3-4b:free",
@@ -437,7 +561,10 @@
       "benchmark_score": 6.9,
       "user_reviews_score": 7.0,
       "overall_power": 6.9,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "agentica-org/deepcoder-14b-preview:free",
@@ -448,7 +575,11 @@
       "benchmark_score": 7.6,
       "user_reviews_score": 7.7,
       "overall_power": 7.6,
-      "tags": ["openrouter", "free", "coding"]
+      "tags": [
+        "openrouter",
+        "free",
+        "coding"
+      ]
     },
     {
       "id": "openrouter/sherlock-dash-alpha",
@@ -459,7 +590,10 @@
       "benchmark_score": 9.1,
       "user_reviews_score": 9.1,
       "overall_power": 9.1,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     },
     {
       "id": "openrouter/sherlock-think-alpha",
@@ -470,7 +604,10 @@
       "benchmark_score": 9.1,
       "user_reviews_score": 9.1,
       "overall_power": 9.1,
-      "tags": ["openrouter", "free"]
+      "tags": [
+        "openrouter",
+        "free"
+      ]
     }
   ]
 }
