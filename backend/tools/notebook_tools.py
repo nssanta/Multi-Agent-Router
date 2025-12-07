@@ -31,6 +31,12 @@ class NotebookListCellsTool(BaseTool):
     }
 
     def execute(self, notebook_path: str, limit: int = 0) -> ToolResult:
+        """
+        Показываем список ячеек в Jupyter notebook.
+        :param notebook_path: путь к файлу
+        :param limit: лимит ячеек
+        :return: результат выполнения
+        """
         try:
             # notebook_editor.py теперь в том же каталоге
             editor_path = Path(__file__).parent / "notebook_editor.py"
@@ -118,6 +124,14 @@ class NotebookAddCellTool(BaseTool):
     }
 
     def execute(self, notebook_path: str, content: str, cell_type: str = "code", index: int = -1) -> ToolResult:
+        """
+        Добавляем новую ячейку в Jupyter notebook.
+        :param notebook_path: путь к файлу
+        :param content: содержимое ячейки
+        :param cell_type: тип ячейки
+        :param index: индекс вставки
+        :return: результат выполнения
+        """
         try:
             editor_path = Path(__file__).parent / "notebook_editor.py"
             cmd = [
@@ -165,6 +179,13 @@ class NotebookUpdateCellTool(BaseTool):
     }
 
     def execute(self, notebook_path: str, cell_index: int, content: str) -> ToolResult:
+        """
+        Обновляем содержимое ячейки в Jupyter notebook.
+        :param notebook_path: путь к файлу
+        :param cell_index: индекс ячейки
+        :param content: новое содержимое
+        :return: результат выполнения
+        """
         try:
             editor_path = Path(__file__).parent / "notebook_editor.py"
             cmd = [
@@ -206,6 +227,12 @@ class NotebookDeleteCellTool(BaseTool):
     }
 
     def execute(self, notebook_path: str, cell_index: int) -> ToolResult:
+        """
+        Удаляем ячейку из Jupyter notebook.
+        :param notebook_path: путь к файлу
+        :param cell_index: индекс ячейки
+        :return: результат выполнения
+        """
         try:
             editor_path = Path(__file__).parent / "notebook_editor.py"
             cmd = ["python", str(editor_path), "delete", notebook_path, str(cell_index)]
@@ -248,6 +275,13 @@ class NotebookSearchTool(BaseTool):
     }
 
     def execute(self, notebook_path: str, query: str, use_regex: bool = False) -> ToolResult:
+        """
+        Ищем текст в Jupyter notebook.
+        :param notebook_path: путь к файлу
+        :param query: поисковый запрос
+        :param use_regex: использовать regex
+        :return: результат выполнения
+        """
         try:
             editor_path = Path(__file__).parent / "notebook_editor.py"
             cmd = ["python", str(editor_path), "search", notebook_path, query]
@@ -282,6 +316,11 @@ class NotebookCreateTool(BaseTool):
     }
 
     def execute(self, notebook_path: str) -> ToolResult:
+        """
+        Создаем новый Jupyter notebook.
+        :param notebook_path: путь к файлу
+        :return: результат выполнения
+        """
         try:
             editor_path = Path(__file__).parent / "notebook_editor.py"
             cmd = ["python", str(editor_path), "create", notebook_path]
@@ -324,6 +363,13 @@ class NotebookDiffTool(BaseTool):
     }
 
     def execute(self, notebook_path: str, cell_index: int, new_content: str) -> ToolResult:
+        """
+        Показываем diff между текущей ячейкой и новым содержимым.
+        :param notebook_path: путь к файлу
+        :param cell_index: индекс ячейки
+        :param new_content: новое содержимое
+        :return: результат выполнения
+        """
         try:
             editor_path = Path(__file__).parent / "notebook_editor.py"
             cmd = [

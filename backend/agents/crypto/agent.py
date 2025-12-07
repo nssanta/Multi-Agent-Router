@@ -41,7 +41,11 @@ KNOWN_TOKENS = {
 
 
 def extract_symbol_from_message(message: str) -> Optional[str]:
-    """Извлечь символ криптовалюты из сообщения"""
+    """
+    Извлекаем символ криптовалюты из сообщения.
+    :param message: сообщение пользователя
+    :return: символ пары (например, BTCUSDT) или None
+    """
     message_lower = message.lower()
     
     for token, symbol in KNOWN_TOKENS.items():
@@ -64,7 +68,11 @@ def extract_symbol_from_message(message: str) -> Optional[str]:
 
 
 def run_full_analysis(symbol: str) -> Dict[str, Any]:
-    """Запустить полный анализ криптовалюты"""
+    """
+    Запускаем полный анализ криптовалюты.
+    :param symbol: торговая пара (например, BTCUSDT)
+    :return: словарь с результатами анализа
+    """
     client = get_binance_client()
     symbol = client.normalize_symbol(symbol)
     
@@ -95,7 +103,11 @@ def run_full_analysis(symbol: str) -> Dict[str, Any]:
 
 
 def format_data_for_prompt(data: Dict[str, Any]) -> str:
-    """Форматировать данные анализа для промпта"""
+    """
+    Форматируем данные анализа для промпта.
+    :param data: данные анализа
+    :return: отформатированная строка
+    """
     lines = []
     
     symbol = data.get("symbol", "UNKNOWN")
@@ -212,10 +224,19 @@ def format_data_for_prompt(data: Dict[str, Any]) -> str:
 
 
 def create_crypto_analyst_agent(llm_provider: BaseLLMProvider, session_path: Path) -> Agent:
-    """Создать главного агента Crypto Analyst"""
+    """
+    Создаем главного агента Crypto Analyst.
+    :param llm_provider: LLM провайдер
+    :param session_path: путь к сессии
+    :return: объект агента
+    """
     
     def get_instruction_with_context(state: AgentState) -> str:
-        """Динамически формируем промпт с реальными данными"""
+        """
+        Динамически формируем промпт с реальными данными.
+        :param state: состояние агента
+        :return: инструкция с контекстом
+        """
         
         user_input = state.get("current_user_input", "")
         

@@ -43,7 +43,7 @@ class TreeOfThoughtsResult:
 
 class TreeOfThoughts:
     """
-    Tree of Thoughts для анализа задач программирования
+    Tree of Thoughts для анализа задач программирования.
     
     Алгоритм:
     1. Анализ задачи (понимание требований)
@@ -51,10 +51,9 @@ class TreeOfThoughts:
     3. Оценка каждой ветки
     4. Выбор лучшего решения
     
-    Параметры:
-        llm_provider: LLM провайдер для генерации
-        num_branches: количество веток (по умолчанию 2)
-        temperature: температура для разнообразия веток
+    :param llm_provider: LLM провайдер для генерации
+    :param num_branches: количество веток (по умолчанию 2)
+    :param temperature: температура для разнообразия веток
     """
     
     def __init__(
@@ -69,14 +68,11 @@ class TreeOfThoughts:
     
     def think(self, task: str, context: str = "") -> TreeOfThoughtsResult:
         """
-        Запустить Tree of Thoughts для задачи
+        Запускаем Tree of Thoughts для задачи.
         
-        Args:
-            task: Описание задачи
-            context: Дополнительный контекст (код, файлы и т.д.)
-            
-        Returns:
-            TreeOfThoughtsResult с анализом и решением
+        :param task: Описание задачи
+        :param context: Дополнительный контекст (код, файлы и т.д.)
+        :return: TreeOfThoughtsResult с анализом и решением
         """
         logger.info(f"ToT: Starting analysis for task: {task[:100]}...")
         
@@ -105,7 +101,7 @@ class TreeOfThoughts:
         )
     
     def _analyze_task(self, task: str, context: str) -> str:
-        """Шаг 1: Анализ задачи"""
+        """Шаг 1: Анализируем задачу"""
         
         prompt = f"""{get_analyzer_instruction()}
 
@@ -129,7 +125,7 @@ class TreeOfThoughts:
         analysis: str, 
         context: str
     ) -> List[ThoughtBranch]:
-        """Шаг 2: Генерация веток решений"""
+        """Шаг 2: Генерируем ветки решений"""
         
         branches = []
         
@@ -189,7 +185,7 @@ class TreeOfThoughts:
         task: str, 
         branches: List[ThoughtBranch]
     ) -> tuple[str, Optional[ThoughtBranch]]:
-        """Шаг 3: Оценка веток"""
+        """Шаг 3: Оцениваем ветки"""
         
         if not branches:
             return "Нет веток для оценки", None
@@ -229,7 +225,7 @@ class TreeOfThoughts:
         evaluation: str, 
         branches: List[ThoughtBranch]
     ) -> Optional[ThoughtBranch]:
-        """Извлечь рекомендуемую ветку из оценки"""
+        """Извлекаем рекомендуемую ветку из оценки"""
         
         # Простой поиск по тексту
         import re
@@ -261,7 +257,7 @@ class TreeOfThoughts:
         evaluation: str, 
         branches: List[ThoughtBranch]
     ) -> None:
-        """Обновить scores веток на основе оценки"""
+        """Обновляем scores веток на основе оценки"""
         
         import re
         
@@ -280,7 +276,7 @@ class TreeOfThoughts:
         evaluation: str, 
         best_branch: Optional[ThoughtBranch]
     ) -> str:
-        """Извлечь финальный код из оценки или лучшей ветки"""
+        """Извлекаем финальный код из оценки или лучшей ветки"""
         
         import re
         
@@ -309,16 +305,13 @@ def run_tree_of_thoughts(
     num_branches: int = 2
 ) -> TreeOfThoughtsResult:
     """
-    Удобная функция для запуска Tree of Thoughts
+    Удобная функция для запуска Tree of Thoughts.
     
-    Args:
-        llm_provider: LLM провайдер
-        task: Задача для решения
-        context: Дополнительный контекст
-        num_branches: Количество веток (по умолчанию 2)
-        
-    Returns:
-        TreeOfThoughtsResult
+    :param llm_provider: LLM провайдер
+    :param task: Задача для решения
+    :param context: Дополнительный контекст
+    :param num_branches: Количество веток (по умолчанию 2)
+    :return: TreeOfThoughtsResult
     """
     tot = TreeOfThoughts(llm_provider, num_branches=num_branches)
     return tot.think(task, context)

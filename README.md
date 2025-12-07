@@ -57,6 +57,7 @@ Agent: I'll create and run a Python script for you.
 Output: [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
 ```
 
+
 ---
 
 ### 📊 Crypto Analyst Agent
@@ -122,6 +123,21 @@ Trade Flow:
               │ crypto  │
               └─────────┘
 ```
+
+---
+
+## 🔐 Security
+
+This project implements multiple layers of security for code execution:
+
+| Layer | Protection |
+|-------|------------|
+| **🐳 Sandbox Container** | Code runs in isolated Docker container with no network access |
+| **📁 Path Validation** | All file operations restricted to session workspace |
+| **⏱️ Resource Limits** | CPU, memory, and timeout constraints |
+| **👤 Non-root User** | Sandbox runs as unprivileged user |
+
+> ⚠️ **Disclaimer**: This is a demonstration project. For production use, consider additional hardening (gVisor, Firecracker, etc.)
 
 ---
 

@@ -8,6 +8,7 @@ python-multipart
 # LLM Providers
 google-generativeai
 requests
+httpx  # For sandbox client
 
 # Web Search and Content Reading
 ddgs

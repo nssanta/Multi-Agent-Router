@@ -31,7 +31,7 @@ class AgentState:
     
     def get(self, key: str, default=None):
         """
-        Получает значение из state.
+        Получаем значение из state.
         :param key: ключ
         :param default: значение по умолчанию
         :return: значение
@@ -40,7 +40,7 @@ class AgentState:
     
     def set(self, key: str, value):
         """
-        Устанавливает значение в state.
+        Устанавливаем значение в state.
         :param key: ключ
         :param value: значение
         """
@@ -57,7 +57,7 @@ class AgentState:
     
     def to_dict(self) -> Dict:
         """
-        Экспортирует в dict для сохранения.
+        Экспортируем в dict для сохранения.
         :return: словарь данных
         """
         return self.data.copy()
@@ -103,7 +103,7 @@ class Agent:
     
     def _supports_native_tools(self) -> bool:
         """
-        Проверяет, поддерживает ли провайдер native tool calling.
+        Проверяем, поддерживает ли провайдер native tool calling.
         :return: True если поддерживает
         """
         return (
@@ -114,7 +114,7 @@ class Agent:
     
     def _get_instruction(self) -> str:
         """
-        Получает instruction (может быть строкой или функцией).
+        Получаем instruction (может быть строкой или функцией).
         :return: текст инструкции
         """
         if callable(self.instruction):
@@ -123,7 +123,7 @@ class Agent:
     
     def run(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> str:
         """
-        Запускает агента (синхронная обертка над streaming).
+        Запускаем агента (синхронная обертка над streaming).
         :param user_input: ввод пользователя
         :param history: история диалога
         :return: ответ агента
@@ -136,7 +136,7 @@ class Agent:
 
     def run_stream(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> Iterator[Dict[str, str]]:
         """
-        Запускает агента в режиме стриминга с поддержкой multi-turn loops.
+        Запускаем агента в режиме стриминга с поддержкой multi-turn loops.
         
         :param user_input: ввод пользователя
         :param history: история диалога
@@ -273,6 +273,28 @@ class Agent:
                     # Execute
                     try:
                         result_text = ""
+                        
+                        # === SECURITY: Path validation helper ===
+                        def validate_path(path_str: str):
+                            """
+                            Безопасная валидация пути внутри workspace.
+                            Предотвращает Path Traversal атаки.
+                            """
+                            from pathlib import Path as PathLib
+                            workspace = self.code_executor.workspace_path.resolve()
+                            
+                            # Убираем leading slash чтобы / не заменил корень
+                            clean_path = path_str.lstrip("/").lstrip("\\")
+                            resolved = (workspace / clean_path).resolve()
+                            
+                            # Критическая проверка
+                            try:
+                                resolved.relative_to(workspace)
+                            except ValueError:
+                                raise ValueError(f"Access Denied: Path must be within workspace. Attempted: {path_str}")
+                            
+                            return resolved
+                        
                         if tool_name == "run_code":
                             code = tool_params.get("code")
                             if code:
@@ -292,27 +314,32 @@ class Agent:
                             path = tool_params.get("path")
                             content = tool_params.get("content")
                             if path:
-                                full_path = self.code_executor.workspace_path / path
-                                full_path.parent.mkdir(parents=True, exist_ok=True)
-                                with open(full_path, 'w', encoding='utf-8') as f:
-                                    if content is None:
-                                         # Handle empty content gracefuly
-                                         f.write("")
-                                    else:
-                                         f.write(content)
-                                result_text = f"File {path} written successfully."
+                                try:
+                                    full_path = validate_path(path)
+                                    full_path.parent.mkdir(parents=True, exist_ok=True)
+                                    with open(full_path, 'w', encoding='utf-8') as f:
+                                        if content is None:
+                                             f.write("")
+                                        else:
+                                             f.write(content)
+                                    result_text = f"File {path} written successfully."
+                                except ValueError as e:
+                                    result_text = f"Security Error: {e}"
                             else:
                                 result_text = "Error: Missing path for write_file"
                                 
                         elif tool_name == "read_file":
                             path = tool_params.get("path")
                             if path:
-                                full_path = self.code_executor.workspace_path / path
-                                if full_path.exists():
-                                    with open(full_path, 'r', encoding='utf-8') as f:
-                                        result_text = f"File Content ({path}):\n{f.read()}"
-                                else:
-                                    result_text = f"Error: File {path} not found."
+                                try:
+                                    full_path = validate_path(path)
+                                    if full_path.exists():
+                                        with open(full_path, 'r', encoding='utf-8') as f:
+                                            result_text = f"File Content ({path}):\n{f.read()}"
+                                    else:
+                                        result_text = f"Error: File {path} not found."
+                                except ValueError as e:
+                                    result_text = f"Security Error: {e}"
                             else:
                                 result_text = "Error: Missing path for read_file"
                                 
@@ -391,17 +418,27 @@ Do not wrap the JSON in XML tags or other text. Ensure strict JSON syntax."""
         logger.info(f"[{self.name}] Stream Complete")
 
     def _log_llm_request(self, user_input: str, prompt: str):
-        """Log the LLM request"""
+        """
+        Логируем LLM запрос.
+        :param user_input: ввод пользователя
+        :param prompt: полный промпт
+        """
         logger.info(f"[{self.name}] LLM Request: {user_input}")
     
     def _log_llm_response(self, response: str, success: bool):
-        """Log the LLM response"""
+        """
+        Логируем LLM ответ.
+        :param response: ответ модели
+        :param success: успех выполнения
+        """
         # Log first 1000 chars to debug
         logger.info(f"[{self.name}] LLM Response (Success={success}, Len={len(response)}): {response[:1000]}")
 
     def _extract_json_tool_call(self, text: str) -> Optional[Dict]:
         """
-        Extract JSON tool call from text using robust parsing.
+        Извлекаем JSON tool call из текста, используя надежный парсинг.
+        :param text: текст ответа модели
+        :return: словарь с параметрами инструмента или None
         """
         import json
         import re
@@ -548,7 +585,7 @@ class SequentialAgent:
     
     def run(self, user_input: str) -> str:
         """
-        Запускает последовательно всех субагентов.
+        Запускаем последовательно всех субагентов.
         :param user_input: ввод пользователя
         :return: итоговый результат
         """
@@ -592,7 +629,7 @@ class ParallelAgent:
     
     def run(self, user_input: str) -> str:
         """
-        Запускает параллельно всех субагентов.
+        Запускаем параллельно всех субагентов.
         :param user_input: ввод пользователя
         :return: объединенный результат
         """
@@ -633,7 +670,7 @@ class LoopAgent:
     
     def run(self, user_input: str) -> str:
         """
-        Запускает агента в цикле.
+        Запускаем агента в цикле.
         :param user_input: ввод пользователя
         :return: итоговый результат
         """

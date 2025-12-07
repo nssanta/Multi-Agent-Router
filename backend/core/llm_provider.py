@@ -36,12 +36,22 @@ class BaseLLMProvider(ABC):
 
     @abstractmethod
     def generate(self, prompt: str, **kwargs) -> str:
-        """Синхронно генерируем ответ."""
+        """
+        Синхронно генерируем ответ.
+        :param prompt: текстовый промпт
+        :param kwargs: дополнительные аргументы
+        :return: сгенерированный текст
+        """
         pass
     
     @abstractmethod
     def stream(self, prompt: str, **kwargs) -> Iterator[str]:
-        """Генерируем ответ потоково."""
+        """
+        Генерируем ответ потоково.
+        :param prompt: текстовый промпт
+        :param kwargs: дополнительные аргументы
+        :return: итератор по чанкам текста
+        """
         pass
 
     # ===== Метрики токенов =====
@@ -86,9 +96,7 @@ class BaseLLMProvider(ABC):
     def get_context_limit(self) -> int:
         """
         Получаем лимит контекста в токенах.
-        
-        Returns:
-            Примерный лимит токенов для модели
+        :return: Примерный лимит токенов для модели
         """
         return getattr(self, '_context_limit', 128000)  # Default 128K tokens
     
@@ -99,11 +107,8 @@ class BaseLLMProvider(ABC):
         Простая эвристика: ~4 символа = 1 токен для английского
         ~2-3 символа = 1 токен для русского (больше multi-byte chars)
         
-        Args:
-            text: Текст для оценки
-        
-        Returns:
-            Примерное количество токенов
+        :param text: Текст для оценки
+        :return: Примерное количество токенов
         """
         # Простая эвристика: среднее между английским и русским
         return len(text) // 3
@@ -115,13 +120,10 @@ class BaseLLMProvider(ABC):
         """
         Рассчитываем доступное место для контента.
         
-        Args:
-            system_prompt: Системный промпт
-            history: История сообщений
-            buffer_ratio: Процент для буфера (response space)
-        
-        Returns:
-            Количество символов доступных для контента
+        :param system_prompt: Системный промпт
+        :param history: История сообщений
+        :param buffer_ratio: Процент для буфера (response space)
+        :return: Количество символов доступных для контента
         """
         total_limit = self.get_context_limit()
         
@@ -212,14 +214,11 @@ class GeminiProvider(BaseLLMProvider):
         
         Это гарантирует 100% валидный JSON tool call от модели.
         
-        Args:
-            prompt: Текст запроса
-            tools: Список определений инструментов в формате:
-                [{"name": "tool_name", "description": "...", "parameters": {...}}]
-            **kwargs: Дополнительные параметры
-            
-        Returns:
-            Dict с:
+        :param prompt: Текст запроса
+        :param tools: Список определений инструментов в формате:
+            [{"name": "tool_name", "description": "...", "parameters": {...}}]
+        :param kwargs: Дополнительные параметры
+        :return: Dict с:
             - "text": текстовый ответ (если есть)
             - "tool_calls": список вызовов инструментов [{name, args}]
             - "finish_reason": причина завершения
@@ -306,12 +305,9 @@ class GeminiProvider(BaseLLMProvider):
         Лимиты Free Tier: зависят от модели
         Лимиты Paid Tier: 1,500/day бесплатно, затем $35/1000
         
-        Args:
-            prompt: Промпт для генерации
-            **kwargs: Дополнительные параметры
-            
-        Returns:
-            Dict с response и grounding_metadata (источники)
+        :param prompt: Промпт для генерации
+        :param kwargs: Дополнительные параметры
+        :return: Dict с response и grounding_metadata (источники)
         """
         import google.generativeai as genai
         
@@ -523,14 +519,11 @@ class OpenRouterProvider(BaseLLMProvider):
         """
         Генерируем с поддержкой native tool calling.
         
-        Args:
-            messages: Список сообщений в OpenAI формате
-            tools: Список tool definitions
-            tool_choice: "auto", "none", "required" или конкретный tool
-            **kwargs: Дополнительные параметры
-            
-        Returns:
-            Dict с content, tool_calls, finish_reason, usage
+        :param messages: Список сообщений в OpenAI формате
+        :param tools: Список tool definitions
+        :param tool_choice: "auto", "none", "required" или конкретный tool
+        :param kwargs: Дополнительные параметры
+        :return: Dict с content, tool_calls, finish_reason, usage
         """
         import requests
         
@@ -588,12 +581,9 @@ class OpenRouterProvider(BaseLLMProvider):
         """
         Обрабатываем чат с историей сообщений.
         
-        Args:
-            messages: Список сообщений [{role, content}, ...]
-            **kwargs: Дополнительные параметры
-            
-        Returns:
-            Ответ модели (строка)
+        :param messages: Список сообщений [{role, content}, ...]
+        :param kwargs: Дополнительные параметры
+        :return: Ответ модели (строка)
         """
         import requests
         

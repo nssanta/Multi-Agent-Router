@@ -32,7 +32,7 @@ def smart_chunk_content(
     paragraph_separator: str = "\n\n"
 ) -> Dict[str, any]:
     """
-    Умный chunking контента с приоритизацией по keywords
+    Умный chunking контента с приоритизацией по keywords.
     
     Стратегия:
     1. Разбить текст на параграфы
@@ -40,18 +40,11 @@ def smart_chunk_content(
     3. Выбрать самые релевантные параграфы до max_chars
     4. Вернуть текст + metadata (% показанного контента)
     
-    Args:
-        text: Полный текст для chunking
-        query_words: Множество ключевых слов из запроса
-        max_chars: Максимальное количество символов
-        paragraph_separator: Разделитель параграфов
-    
-    Returns:
-        Dict с полями:
-            - content: Отобранный контент
-            - coverage: Процент исходного контента (0.0-1.0)
-            - num_paragraphs: Количество параграфов
-            - truncated: Bool - был ли контент обрезан
+    :param text: Полный текст для chunking
+    :param query_words: Множество ключевых слов из запроса
+    :param max_chars: Максимальное количество символов
+    :param paragraph_separator: Разделитель параграфов
+    :return: Dict с полями content, coverage, num_paragraphs, truncated
     """
     if len(text) <= max_chars:
         # Текст влезает целиком
@@ -116,19 +109,16 @@ def smart_chunk_content(
 
 def _calculate_paragraph_relevance(paragraph: str, query_words: Set[str]) -> float:
     """
-    Оценить релевантность параграфа
+    Оцениваем релевантность параграфа.
     
     Критерии:
     - Количество совпадающих ключевых слов
     - Плотность ключевых слов (keyword density)
     - Длина параграфа (не слишком короткий, не слишком длинный)
     
-    Args:
-        paragraph: Текст параграфа
-        query_words: Ключевые слова для поиска
-    
-    Returns:
-        Оценка релевантности (чем выше, тем лучше)
+    :param paragraph: Текст параграфа
+    :param query_words: Ключевые слова для поиска
+    :return: Оценка релевантности (чем выше, тем лучше)
     """
     score = 0.0
     
@@ -166,17 +156,18 @@ def _calculate_paragraph_relevance(paragraph: str, query_words: Set[str]) -> flo
 
 class WebReader:
     """
-    Читает содержимое веб-страниц и извлекает основной текст
+    Читает содержимое веб-страниц и извлекает основной текст.
     
-    Использует requests + BeautifulSoup для парсинга
-    Извлекает: title, main_text, meta_description
+    Использует requests + BeautifulSoup для парсинга.
+    Извлекает: title, main_text, meta_description.
     """
     
     def __init__(self, timeout: int = 10, rate_limit: float = 1.0):
         """
-        Args:
-            timeout: Таймаут запроса в секундах (default: 10)
-            rate_limit: Пауза между запросами в секундах (default: 1.0)
+        Инициализируем WebReader.
+        
+        :param timeout: Таймаут запроса в секундах (default: 10)
+        :param rate_limit: Пауза между запросами в секундах (default: 1.0)
         """
         self.timeout = timeout
         self.rate_limit = rate_limit
@@ -189,19 +180,10 @@ class WebReader:
     
     def read_url(self, url: str) -> Dict[str, str]:
         """
-        Прочитать содержимое URL
+        Читаем содержимое URL.
         
-        Args:
-            url: URL страницы для чтения
-        
-        Returns:
-            Dict с полями:
-                - url: исходный URL
-                - title: заголовок страницы
-                - main_text: основной текст (первые 5000 символов)
-                - meta_description: мета-описание
-                - status: "success" или "error"
-                - error: сообщение об ошибке (если status="error")
+        :param url: URL страницы для чтения
+        :return: Dict с полями: url, title, main_text, meta_description, status, error
         """
         # Rate limiting - пауза между запросами
         elapsed = time.time() - self.last_request_time
@@ -296,7 +278,7 @@ class WebReader:
     
     def _extract_main_text(self, soup: BeautifulSoup) -> str:
         """
-        Извлечь основной текст из HTML, убирая навигацию и рекламу
+        Извлекаем основной текст из HTML, убирая навигацию и рекламу.
         
         Стратегия:
         1. Удалить ненужные теги (script, style, nav, footer, ads)
@@ -355,14 +337,11 @@ class WebReader:
     
     def read_multiple_urls(self, urls: list, max_urls: int = 3) -> list:
         """
-        Прочитать несколько URL
+        Читаем несколько URL.
         
-        Args:
-            urls: Список URL для чтения
-            max_urls: Максимум URL для чтения (default: 3)
-        
-        Returns:
-            Список результатов read_url()
+        :param urls: Список URL для чтения
+        :param max_urls: Максимум URL для чтения (default: 3)
+        :return: Список результатов read_url()
         """
         results = []
         
@@ -382,13 +361,10 @@ class WebReader:
 
 def format_read_results(results: list) -> str:
     """
-    Форматировать результаты чтения для отображения
+    Форматируем результаты чтения для отображения.
     
-    Args:
-        results: Список результатов из read_multiple_urls()
-    
-    Returns:
-        Отформатированная строка с содержимым
+    :param results: Список результатов из read_multiple_urls()
+    :return: Отформатированная строка с содержимым
     """
     if not results:
         return "⚠️ **No content read** - Failed to read any URLs."
@@ -423,7 +399,7 @@ def format_read_results(results: list) -> str:
 _web_reader = None
 
 def get_web_reader() -> WebReader:
-    """Получить singleton экземпляр WebReader"""
+    """Получаем singleton экземпляр WebReader"""
     global _web_reader
     if _web_reader is None:
         _web_reader = WebReader(timeout=10, rate_limit=1.0)
@@ -431,12 +407,21 @@ def get_web_reader() -> WebReader:
 
 
 def read_url(url: str) -> Dict[str, str]:
-    """Удобная функция для чтения одного URL"""
+    """
+    Удобная функция для чтения одного URL.
+    :param url: URL
+    :return: результат чтения
+    """
     reader = get_web_reader()
     return reader.read_url(url)
 
 
 def read_multiple_urls(urls: list, max_urls: int = 3) -> list:
-    """Удобная функция для чтения нескольких URL"""
+    """
+    Удобная функция для чтения нескольких URL.
+    :param urls: список URL
+    :param max_urls: лимит
+    :return: список результатов
+    """
     reader = get_web_reader()
     return reader.read_multiple_urls(urls, max_urls)

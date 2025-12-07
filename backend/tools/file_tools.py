@@ -6,6 +6,10 @@
 - WriteFileTool: запись/создание файлов
 - ListDirTool: листинг директорий
 - DiffTool: создание diff между версиями
+
+Security:
+- Все пути валидируются через validate_path_security()
+- Path Traversal атаки предотвращены
 """
 
 from pathlib import Path
@@ -17,6 +21,39 @@ import logging
 from .base import BaseTool, ToolResult, register_tool
 
 logger = logging.getLogger(__name__)
+
+
+def validate_path_security(path: str, workspace: Path) -> Path:
+    """
+    Безопасно валидируем путь. Предотвращаем Path Traversal атаки.
+    
+    :param path: Путь от пользователя (может быть вредоносным)
+    :param workspace: Корневая директория workspace
+    :return: Безопасный абсолютный путь внутри workspace
+    :raises ValueError: При попытке path traversal
+    """
+    # Нормализуем workspace
+    workspace_resolved = workspace.resolve()
+    
+    # Убираем leading slash чтобы абсолютные пути не заменяли корень
+    # Path("/workspace") / "/etc/passwd" = Path("/etc/passwd") - ОПАСНО!
+    # Path("/workspace") / "etc/passwd" = Path("/workspace/etc/passwd") - БЕЗОПАСНО
+    clean_path = path.lstrip("/").lstrip("\\")
+    
+    # Также убираем попытки выхода через ..
+    # Но resolve() сделает это за нас
+    
+    # Резолвим относительно workspace
+    resolved = (workspace / clean_path).resolve()
+    
+    # Критическая проверка: путь должен быть внутри workspace
+    try:
+        resolved.relative_to(workspace_resolved)
+    except ValueError:
+        logger.warning(f"Path traversal attempt detected: {path} -> {resolved}")
+        raise ValueError(f"Access Denied: Path must be within workspace. Attempted: {path}")
+    
+    return resolved
 
 
 @register_tool
@@ -48,7 +85,13 @@ class ReadFileTool(BaseTool):
         start_line: Optional[int] = None, 
         end_line: Optional[int] = None
     ) -> ToolResult:
-        """Прочитать файл"""
+        """
+        Читаем файл.
+        :param path: путь к файлу
+        :param start_line: начальная строка
+        :param end_line: конечная строка
+        :return: результат выполнения
+        """
         try:
             # Резолвим путь относительно session_path если есть
             file_path = self._resolve_path(path)
@@ -88,24 +131,29 @@ class ReadFileTool(BaseTool):
             return ToolResult.error(f"Error reading file: {str(e)}")
     
     def _resolve_path(self, path: str) -> Path:
-        """Резолвим путь относительно workspace сессии"""
-        p = Path(path)
-        if p.is_absolute():
-            return p
+        """
+        Безопасно резолвим путь относительно workspace сессии.
+        Защищаем от Path Traversal атак.
+        :param path: путь
+        :return: абсолютный путь
+        """
         if self.session_path:
-            # Пробуем в workspace сессии
             workspace = Path(self.session_path) / "workspace"
-            candidate = workspace / path
-            if candidate.exists():
-                return candidate
-            # Пробуем в input
             input_dir = Path(self.session_path) / "input"
-            candidate = input_dir / path
-            if candidate.exists():
-                return candidate
-            # Возвращаем workspace версию по умолчанию
-            return workspace / path
-        return p
+            
+            # Сначала пробуем найти в input (для read-only доступа)
+            try:
+                input_path = validate_path_security(path, input_dir)
+                if input_path.exists():
+                    return input_path
+            except ValueError:
+                pass  # Не в input, пробуем workspace
+            
+            # Основной путь - workspace
+            return validate_path_security(path, workspace)
+        
+        # Fallback без session_path (не должно происходить в production)
+        return Path(path)
 
 
 @register_tool
@@ -144,7 +192,14 @@ class WriteFileTool(BaseTool):
         mode: str = "write",
         **kwargs  # Игнорируем лишние параметры
     ) -> ToolResult:
-        """Записать файл"""
+        """
+        Записываем файл.
+        :param path: путь к файлу
+        :param file_path: альтернативное имя для path
+        :param content: содержимое
+        :param mode: режим записи
+        :return: результат выполнения
+        """
         try:
             # Поддержка alias file_path
             actual_path = path or file_path
@@ -182,13 +237,18 @@ class WriteFileTool(BaseTool):
             return ToolResult.error(f"Error writing file: {str(e)}")
     
     def _resolve_path(self, path: str) -> Path:
-        """Резолвим путь в workspace сессии"""
-        p = Path(path)
-        if p.is_absolute():
-            return p
+        """
+        Безопасно резолвим путь в workspace сессии.
+        Защищаем от Path Traversal атак.
+        :param path: путь
+        :return: абсолютный путь
+        """
         if self.session_path:
-            return Path(self.session_path) / "workspace" / path
-        return p
+            workspace = Path(self.session_path) / "workspace"
+            return validate_path_security(path, workspace)
+        
+        # Fallback (не должно происходить в production)
+        return Path(path)
 
 
 @register_tool
@@ -220,7 +280,13 @@ class ListDirTool(BaseTool):
         recursive: bool = False,
         include_hidden: bool = False
     ) -> ToolResult:
-        """Получить листинг директории"""
+        """
+        Получаем листинг директории.
+        :param path: путь к директории
+        :param recursive: рекурсивный обход
+        :param include_hidden: включить скрытые файлы
+        :return: результат выполнения
+        """
         try:
             dir_path = self._resolve_path(path)
             
@@ -268,16 +334,18 @@ class ListDirTool(BaseTool):
             return ToolResult.error(f"Error listing directory: {str(e)}")
     
     def _resolve_path(self, path: str) -> Path:
-        """Резолвим путь"""
-        p = Path(path)
-        if p.is_absolute():
-            return p
+        """
+        Безопасно резолвим путь.
+        Защищаем от Path Traversal атак.
+        :param path: путь
+        :return: абсолютный путь
+        """
         if self.session_path:
             workspace = Path(self.session_path) / "workspace"
             if path == "." or path == "":
                 return workspace
-            return workspace / path
-        return p
+            return validate_path_security(path, workspace)
+        return Path(path)
 
 
 @register_tool
@@ -314,7 +382,14 @@ class DiffTool(BaseTool):
         is_file: bool = False,
         context_lines: int = 3
     ) -> ToolResult:
-        """Создать diff"""
+        """
+        Создаем diff.
+        :param original: оригинал
+        :param modified: измененная версия
+        :param is_file: True если это пути к файлам
+        :param context_lines: количество строк контекста
+        :return: результат выполнения
+        """
         try:
             # Получаем содержимое
             if is_file:
@@ -374,13 +449,16 @@ class DiffTool(BaseTool):
             return ToolResult.error(f"Error creating diff: {str(e)}")
     
     def _resolve_path(self, path: str) -> Path:
-        """Резолвим путь"""
-        p = Path(path)
-        if p.is_absolute():
-            return p
+        """
+        Безопасно резолвим путь.
+        Защищаем от Path Traversal атак.
+        :param path: путь
+        :return: абсолютный путь
+        """
         if self.session_path:
-            return Path(self.session_path) / "workspace" / path
-        return p
+            workspace = Path(self.session_path) / "workspace"
+            return validate_path_security(path, workspace)
+        return Path(path)
 
 
 @register_tool
@@ -403,7 +481,12 @@ class ApplyDiffTool(BaseTool):
     agent_types = ["coder"]
     
     def execute(self, path: str, diff: str) -> ToolResult:
-        """Применить diff к файлу"""
+        """
+        Применяем diff к файлу.
+        :param path: путь к файлу
+        :param diff: unified diff текст
+        :return: результат выполнения
+        """
         try:
             file_path = self._resolve_path(path)
             
@@ -435,7 +518,7 @@ class ApplyDiffTool(BaseTool):
             return ToolResult.error(f"Error applying diff: {str(e)}")
     
     def _apply_unified_diff(self, original: str, diff_text: str) -> Optional[str]:
-        """Применить unified diff (упрощённая реализация)"""
+        """Применяем unified diff (упрощённая реализация)"""
         # Используем простой подход: парсим hunks и применяем
         lines = original.splitlines(keepends=True)
         diff_lines = diff_text.splitlines(keepends=True)
@@ -493,13 +576,16 @@ class ApplyDiffTool(BaseTool):
         return "".join(result)
     
     def _resolve_path(self, path: str) -> Path:
-        """Резолвим путь"""
-        p = Path(path)
-        if p.is_absolute():
-            return p
+        """
+        Безопасно резолвим путь.
+        Защищаем от Path Traversal атак.
+        :param path: путь
+        :return: абсолютный путь
+        """
         if self.session_path:
-            return Path(self.session_path) / "workspace" / path
-        return p
+            workspace = Path(self.session_path) / "workspace"
+            return validate_path_security(path, workspace)
+        return Path(path)
 
 
 @register_tool
@@ -522,7 +608,12 @@ class RunCodeTool(BaseTool):
     agent_types = ["coder", "mle", "ds"]
     
     def execute(self, code: str, timeout: int = 30, **kwargs) -> ToolResult:
-        """Выполнить Python код"""
+        """
+        Выполняем Python код.
+        :param code: Python код
+        :param timeout: таймаут в секундах
+        :return: результат выполнения
+        """
         import subprocess
         import sys
         import tempfile
@@ -601,7 +692,7 @@ class RunCodeTool(BaseTool):
             return ToolResult.error(f"Error executing code: {str(e)}")
     
     def _get_working_dir(self) -> str:
-        """Получить рабочую директорию"""
+        """Получаем рабочую директорию"""
         if self.session_path:
             workspace = Path(self.session_path) / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
@@ -644,7 +735,14 @@ class SearchFilesTool(BaseTool):
         is_regex: bool = False,
         **kwargs
     ) -> ToolResult:
-        """Поиск в файлах"""
+        """
+        Ищем в файлах.
+        :param pattern: текст или паттерн
+        :param path: директория поиска
+        :param file_pattern: фильтр файлов
+        :param is_regex: использовать regex
+        :return: результат поиска
+        """
         import re
         import fnmatch
         
@@ -726,7 +824,7 @@ class SearchFilesTool(BaseTool):
             return ToolResult.error(f"Error searching files: {str(e)}")
     
     def _is_binary(self, file_path: Path) -> bool:
-        """Проверить, является ли файл бинарным"""
+        """Проверяем, является ли файл бинарным"""
         binary_extensions = {
             '.pyc', '.pyo', '.so', '.dll', '.exe', '.bin',
             '.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg',
@@ -738,13 +836,15 @@ class SearchFilesTool(BaseTool):
         return file_path.suffix.lower() in binary_extensions
     
     def _resolve_path(self, path: str) -> Path:
-        """Резолвим путь"""
-        p = Path(path)
-        if p.is_absolute():
-            return p
+        """
+        Безопасно резолвим путь.
+        Защищаем от Path Traversal атак.
+        :param path: путь
+        :return: абсолютный путь
+        """
         if self.session_path:
             workspace = Path(self.session_path) / "workspace"
             if path == "." or path == "":
                 return workspace
-            return workspace / path
-        return p
+            return validate_path_security(path, workspace)
+        return Path(path)

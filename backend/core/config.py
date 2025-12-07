@@ -23,13 +23,13 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "models.json"
 
 
 class ModelsConfigError(RuntimeError):
-  """Определяет ошибку конфигурации моделей (models.json)."""
+  """Определяем ошибку конфигурации моделей (models.json)."""
 
 
 @lru_cache(maxsize=1)
 def load_models_config() -> Dict[str, Any]:
   """
-  Загружает и кэширует конфиг моделей из models.json.
+  Загружаем и кэшируем конфиг моделей из models.json.
   :return: Словарь с ключами `providers` и `models`.
   """
 
@@ -80,7 +80,7 @@ def load_models_config() -> Dict[str, Any]:
 
 def get_all_models() -> List[Dict[str, Any]]:
   """
-  Возвращает список всех моделей (как есть в конфиге).
+  Возвращаем список всех моделей (как есть в конфиге).
   :return: список словарей моделей
   """
 
@@ -90,7 +90,7 @@ def get_all_models() -> List[Dict[str, Any]]:
 
 def get_models_for_provider(provider: str) -> List[Dict[str, Any]]:
   """
-  Возвращает модели для конкретного провайдера.
+  Возвращаем модели для конкретного провайдера.
   :param provider: имя провайдера
   :return: список моделей
   """
@@ -101,7 +101,7 @@ def get_models_for_provider(provider: str) -> List[Dict[str, Any]]:
 
 def get_model_by_id(model_id: str) -> Optional[Dict[str, Any]]:
   """
-  Ищет модель по её id.
+  Ищем модель по её id.
   :param model_id: ID модели
   :return: словарь модели или None
   """
@@ -114,9 +114,9 @@ def get_model_by_id(model_id: str) -> Optional[Dict[str, Any]]:
 
 def get_default_model(provider: Optional[str] = None) -> Dict[str, Any]:
   """
-  Получает дефолтную модель.
+  Получаем дефолтную модель.
 
-  Выбор происходит по правилам:
+  Выбираем по правилам:
   1) Если передан `provider` — работаем в его рамках, иначе берём `LLM_PROVIDER` из env (gemini/openrouter/...)
   2) Если `LLM_MODEL` указывает на модель данного провайдера и она есть в списке — используем её
   3) Иначе ищем в конфиге модель с `is_default=true` для этого провайдера
@@ -154,8 +154,8 @@ def get_default_model(provider: Optional[str] = None) -> Dict[str, Any]:
 
 def get_max_context_tokens(model_id: str) -> int:
   """
-  Получает максимальный размер контекста для модели.
-  Если модель не найдена или поле отсутствует — вернуть разумный дефолт (128k).
+  Получаем максимальный размер контекста для модели.
+  Если модель не найдена или поле отсутствует — возвращаем разумный дефолт (128k).
   :param model_id: ID модели
   :return: максимальное количество токенов
   """

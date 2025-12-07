@@ -21,7 +21,7 @@ _cache_max_age = 600  # 10 минут
 
 class SmartSearch:
     """
-    Умный многоступенчатый поисковик
+    Умный многоступенчатый поисковик.
     
     Возможности:
     - Целевой поиск по конкретным сайтам (GitHub, StackOverflow, Reddit)
@@ -37,12 +37,12 @@ class SmartSearch:
         self.use_cache = True  # Включить кеширование
     
     def _get_cache_key(self, query: str, target: Optional[str]) -> str:
-        """Создать ключ кеша для запроса"""
+        """Создаем ключ кеша для запроса"""
         cache_str = f"{query.lower()}:{target or 'none'}"
         return hashlib.md5(cache_str.encode()).hexdigest()
     
     def _get_from_cache(self, query: str, target: Optional[str]) -> Optional[List[Dict]]:
-        """Получить результаты из кеша если есть и не устарели"""
+        """Получаем результаты из кеша если есть и не устарели"""
         if not self.use_cache:
             return None
         
@@ -62,7 +62,7 @@ class SmartSearch:
         return None
     
     def _save_to_cache(self, query: str, target: Optional[str], results: List[Dict]):
-        """Сохранить результаты в кеш"""
+        """Сохраняем результаты в кеш"""
         if not self.use_cache:
             return
         
@@ -87,18 +87,12 @@ class SmartSearch:
         deep: bool = True
     ) -> Dict:
         """
-        Выполнить умный поиск
+        Выполняем умный поиск.
         
-        Args:
-            query: Поисковый запрос
-            target: Целевой сайт ("github", "stackoverflow", "reddit", None)
-            deep: Использовать глубокий поиск (несколько раундов)
-        
-        Returns:
-            Dict с результатами:
-                - results: List[Dict] - найденные результаты
-                - steps: int - количество шагов поиска
-                - queries: List[str] - использованные запросы
+        :param query: Поисковый запрос
+        :param target: Целевой сайт ("github", "stackoverflow", "reddit", None)
+        :param deep: Использовать глубокий поиск (несколько раундов)
+        :return: Dict с результатами
         """
         logger.info(f"SmartSearch starting: query='{query}', target={target}, deep={deep}")
         
@@ -203,7 +197,7 @@ class SmartSearch:
         }
     
     def _build_query(self, query: str, target: Optional[str]) -> str:
-        """Построить целевой запрос"""
+        """Построим целевой запрос"""
         if not target:
             return query
         
@@ -230,10 +224,10 @@ class SmartSearch:
         current_results: List[Dict]
     ) -> List[str]:
         """
-        Генерировать альтернативные варианты запроса используя LLM
+        Генерируем альтернативные варианты запроса используя LLM.
         
         LLM анализирует оригинальный запрос и текущие результаты,
-        затем предлагает 2-3 альтернативных формулировки
+        затем предлагает 2-3 альтернативных формулировки.
         """
         if not self.llm_provider:
             # Fallback на rule-based если нет LLM
@@ -324,7 +318,7 @@ Example format:
     
     def _reformulate_query(self, query: str, target: Optional[str]) -> str:
         """
-        Переформулировать запрос для лучших результатов (rule-based fallback)
+        Переформулируем запрос для лучших результатов (rule-based fallback).
         
         Стратегии:
         - Добавить ключевые слова
@@ -351,7 +345,7 @@ Example format:
         return self._build_query(query, target)
     
     def _deduplicate(self, results: List[Dict]) -> List[Dict]:
-        """Убрать дубликаты по URL"""
+        """Убираем дубликаты по URL"""
         seen_urls = set()
         unique = []
         
@@ -370,7 +364,7 @@ Example format:
         target: Optional[str]
     ) -> List[Dict]:
         """
-        Ранжировать результаты по релевантности
+        Ранжируем результаты по релевантности.
         
         Критерии:
         - Наличие ключевых слов в title/snippet
@@ -438,29 +432,13 @@ def smart_search(
     llm_provider=None
 ) -> Dict:
     """
-    Удобная функция для быстрого умного поиска
+    Удобная функция для быстрого умного поиска.
     
-    Args:
-        query: Поисковый запрос
-        target: Целевой сайт (github, stackoverflow, reddit, None)
-        deep: Глубокий поиск (несколько раундов)
-        llm_provider: LLM провайдер для умной генерации запросов (опционально)
-    
-    Returns:
-        Dict с результатами
-    
-    Example:
-        # Поиск на GitHub
-        results = smart_search("reinforcement learning blackjack", target="github")
-        
-        # Общий поиск с углублением
-        results = smart_search("best practices python async", deep=True)
-        
-        # Stack Overflow поиск
-        results = smart_search("how to use asyncio", target="stackoverflow")
-        
-        # С LLM для умной генерации запросов
-        results = smart_search("RL blackjack", target="github", llm_provider=llm)
+    :param query: Поисковый запрос
+    :param target: Целевой сайт (github, stackoverflow, reddit, None)
+    :param deep: Глубокий поиск (несколько раундов)
+    :param llm_provider: LLM провайдер для умной генерации запросов (опционально)
+    :return: Dict с результатами
     """
     searcher = SmartSearch(llm_provider=llm_provider)
     return searcher.search(query, target, deep)
@@ -468,13 +446,10 @@ def smart_search(
 
 def format_smart_results(search_result: Dict) -> str:
     """
-    Форматировать результаты SmartSearch для отображения
+    Форматируем результаты SmartSearch для отображения.
     
-    Args:
-        search_result: Dict из smart_search()
-    
-    Returns:
-        Отформатированная строка
+    :param search_result: Dict из smart_search()
+    :return: Отформатированная строка
     """
     results = search_result.get('results', [])
     steps = search_result.get('steps', 0)

@@ -47,7 +47,15 @@ FINAL_REPORT_TEMPLATE = """
 
 def format_final_report(symbol: str, price_data: dict, trades_data: dict, 
                        orderbook_data: dict, news_data: dict) -> str:
-    """Форматировать финальный отчёт"""
+    """
+    Форматируем финальный отчёт.
+    :param symbol: символ пары
+    :param price_data: данные цены
+    :param trades_data: данные сделок
+    :param orderbook_data: данные стакана
+    :param news_data: данные новостей
+    :return: отформатированный отчет
+    """
     
     # Цена
     price_section = "❌ Данные недоступны"

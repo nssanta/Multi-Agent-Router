@@ -14,18 +14,66 @@ services:
     volumes:
       # Persist сессий и данных
       - ./workspace:/app/workspace
-      # Для hot-reload в dev режиме
+      # Для hot-reload в dev режиме (убрать в production!)
       - ./backend:/app/backend
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+      - SANDBOX_URL=http://sandbox:8001 # URL sandbox service
+    depends_on:
+      sandbox:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - default
+      - internal
+    # Security options
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Sandbox Code Executor (Isolated)
+  sandbox:
+    build:
+      context: ./sandbox
+      dockerfile: Dockerfile
+    container_name: ai_agent_sandbox
+    volumes:
+      # Shared workspace for code execution
+      - ./workspace:/workspace
+    # Security: No network access to external world
+    # Only internal docker network for backend communication
+    networks:
+      - internal
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    # Make most of filesystem read-only
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /home/sandbox:size=50M
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # Frontend (Vite + React)
   frontend:
@@ -44,6 +92,13 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+# Networks
+networks:
+  internal:
+    driver: bridge
+  default:
+    driver: bridge
 
 # Volumes для persistence
 volumes:

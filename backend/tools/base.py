@@ -35,25 +35,48 @@ class ToolResult:
     
     @classmethod
     def success(cls, data: Any = None, message: str = "", metadata: Dict[str, Any] = None) -> "ToolResult":
-        """Создать успешный результат"""
+        """
+        Создаем успешный результат.
+        :param data: данные
+        :param message: сообщение
+        :param metadata: метаданные
+        :return: объект ToolResult
+        """
         return cls(status=ToolStatus.SUCCESS, data=data, message=message, error=None, metadata=metadata or {})
     
     @classmethod
     def error(cls, error: str, data: Any = None) -> "ToolResult":
-        """Создать результат с ошибкой"""
+        """
+        Создаем результат с ошибкой.
+        :param error: текст ошибки
+        :param data: данные (опционально)
+        :return: объект ToolResult
+        """
         return cls(status=ToolStatus.ERROR, error=error, data=data)
     
     @classmethod
     def partial(cls, data: Any, message: str = "", error: str = None) -> "ToolResult":
-        """Создать частично успешный результат"""
+        """
+        Создаем частично успешный результат.
+        :param data: данные
+        :param message: сообщение
+        :param error: текст ошибки
+        :return: объект ToolResult
+        """
         return cls(status=ToolStatus.PARTIAL, data=data, message=message, error=error)
     
     def is_success(self) -> bool:
-        """Проверить успешность"""
+        """
+        Проверяем успешность.
+        :return: True если успех
+        """
         return self.status == ToolStatus.SUCCESS
     
     def to_dict(self) -> Dict[str, Any]:
-        """Сериализовать в словарь"""
+        """
+        Сериализуем в словарь.
+        :return: словарь с полями
+        """
         return {
             "status": self.status.value,
             "data": self.data,
@@ -96,11 +119,10 @@ class BaseTool(ABC):
     
     def __init__(self, session_path: Optional[str] = None, **config):
         """
-        Инициализация инструмента
+        Инициализируем инструмент.
         
-        Args:
-            session_path: Путь к директории сессии (для file tools)
-            **config: Дополнительная конфигурация
+        :param session_path: Путь к директории сессии (для file tools)
+        :param config: Дополнительная конфигурация
         """
         self.session_path = session_path
         self.config = config
@@ -108,22 +130,18 @@ class BaseTool(ABC):
     @abstractmethod
     def execute(self, **kwargs) -> ToolResult:
         """
-        Выполнить инструмент
+        Выполняем инструмент.
         
-        Args:
-            **kwargs: Параметры инструмента
-            
-        Returns:
-            ToolResult с результатом выполнения
+        :param kwargs: Параметры инструмента
+        :return: ToolResult с результатом выполнения
         """
         pass
     
     def validate_params(self, **kwargs) -> Optional[str]:
         """
-        Валидация входных параметров
+        Валидируем входные параметры.
         
-        Returns:
-            None если всё ок, иначе сообщение об ошибке
+        :return: None если всё ок, иначе сообщение об ошибке
         """
         for param in self.required_params:
             if param not in kwargs or kwargs[param] is None:
@@ -132,7 +150,8 @@ class BaseTool(ABC):
     
     def get_schema(self) -> Dict[str, Any]:
         """
-        Получить JSON Schema для LLM (OpenAI function calling format)
+        Получаем JSON Schema для LLM (OpenAI function calling format).
+        :return: словарь схемы
         """
         return {
             "name": self.name,
@@ -176,10 +195,9 @@ class ToolRegistry:
     
     def register(self, tool_class: Type[BaseTool]) -> None:
         """
-        Зарегистрировать класс инструмента
+        Регистрируем класс инструмента.
         
-        Args:
-            tool_class: Класс, наследующий BaseTool
+        :param tool_class: Класс, наследующий BaseTool
         """
         if not issubclass(tool_class, BaseTool):
             raise TypeError(f"{tool_class} must inherit from BaseTool")
@@ -194,20 +212,17 @@ class ToolRegistry:
         logger.debug(f"Registered tool: {tool_class.name}")
     
     def get(self, name: str) -> Optional[Type[BaseTool]]:
-        """Получить класс инструмента по имени"""
+        """Получаем класс инструмента по имени"""
         return self._tools.get(name)
     
     def get_instance(self, name: str, session_path: str = None, **config) -> Optional[BaseTool]:
         """
-        Получить экземпляр инструмента
+        Получаем экземпляр инструмента.
         
-        Args:
-            name: Имя инструмента
-            session_path: Путь к сессии
-            **config: Конфигурация
-            
-        Returns:
-            Экземпляр или None
+        :param name: Имя инструмента
+        :param session_path: Путь к сессии
+        :param config: Конфигурация
+        :return: Экземпляр или None
         """
         tool_class = self.get(name)
         if tool_class:
@@ -221,15 +236,12 @@ class ToolRegistry:
         **config
     ) -> List[BaseTool]:
         """
-        Получить все инструменты, доступные для агента
+        Получаем все инструменты, доступные для агента.
         
-        Args:
-            agent_type: Тип агента ("dialog", "coder", "mle", и т.д.)
-            session_path: Путь к сессии
-            **config: Дополнительная конфигурация
-            
-        Returns:
-            Список экземпляров инструментов
+        :param agent_type: Тип агента ("dialog", "coder", "mle", и т.д.)
+        :param session_path: Путь к сессии
+        :param config: Дополнительная конфигурация
+        :return: Список экземпляров инструментов
         """
         tools = []
         for tool_class in self._tools.values():
@@ -238,11 +250,11 @@ class ToolRegistry:
         return tools
     
     def list_all(self) -> List[str]:
-        """Список имён всех зарегистрированных инструментов"""
+        """Получаем список имён всех зарегистрированных инструментов"""
         return list(self._tools.keys())
     
     def get_schemas_for_agent(self, agent_type: str) -> List[Dict[str, Any]]:
-        """Получить JSON схемы всех инструментов для агента"""
+        """Получаем JSON схемы всех инструментов для агента"""
         schemas = []
         for tool_class in self._tools.values():
             if "all" in tool_class.agent_types or agent_type in tool_class.agent_types:
@@ -258,13 +270,16 @@ tool_registry = ToolRegistry()
 
 def register_tool(tool_class: Type[BaseTool]) -> Type[BaseTool]:
     """
-    Декоратор для регистрации инструмента
+    Декоратор для регистрации инструмента.
     
     Пример:
         @register_tool
         class MyTool(BaseTool):
             name = "my_tool"
             ...
+    
+    :param tool_class: класс инструмента
+    :return: класс инструмента
     """
     tool_registry.register(tool_class)
     return tool_class

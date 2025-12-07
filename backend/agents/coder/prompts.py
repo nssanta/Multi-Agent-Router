@@ -11,7 +11,10 @@ from datetime import datetime
 
 
 def get_coder_instruction() -> str:
-    """Основной системный промпт для Coder Agent - SIMPLIFIED VERSION"""
+    """
+    Основной системный промпт для Coder Agent - SIMPLIFIED VERSION
+    :return: текст промпта
+    """
     
     current_date = datetime.now().strftime("%Y-%m-%d")
     
@@ -85,7 +88,10 @@ I'll create a factorial function for you.
 
 
 def get_analyzer_instruction() -> str:
-    """Промпт для анализа задачи (первая ветка ToT)"""
+    """
+    Промпт для анализа задачи (первая ветка ToT).
+    :return: текст промпта
+    """
     
     return """Ты - аналитик задач программирования. Твоя цель - детально разобрать задачу.
 
@@ -117,7 +123,11 @@ def get_analyzer_instruction() -> str:
 
 
 def get_solution_instruction(branch_id: int) -> str:
-    """Промпт для генерации решения (ветка ToT)"""
+    """
+    Промпт для генерации решения (ветка ToT).
+    :param branch_id: ID ветки
+    :return: текст промпта
+    """
     
     return f"""Ты - программист, генерирующий решение #{branch_id}.
 
@@ -148,7 +158,10 @@ def get_solution_instruction(branch_id: int) -> str:
 
 
 def get_evaluator_instruction() -> str:
-    """Промпт для оценки решений"""
+    """
+    Промпт для оценки решений.
+    :return: текст промпта
+    """
     
     return """Ты - эксперт по code review. Оцени предложенные решения.
 
@@ -185,7 +198,10 @@ def get_evaluator_instruction() -> str:
 
 
 def get_verifier_instruction() -> str:
-    """Промпт для Verifier Agent"""
+    """
+    Промпт для Verifier Agent.
+    :return: текст промпта
+    """
     
     return """Ты - строгий верификатор кода. Твоя задача - найти ошибки и проблемы.
 

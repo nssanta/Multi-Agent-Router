@@ -11,7 +11,7 @@ const API_BASE = '/api';
 
 class ApiClient {
   /**
-   * Выполняет HTTP запрос к API.
+   * Выполняем HTTP запрос к API.
    * @param url - URL endpoint'а
    * @param options - опции запроса
    * @returns результат запроса (JSON)
@@ -38,7 +38,7 @@ class ApiClient {
 
   // Agents
   /**
-   * Получает список доступных агентов.
+   * Получаем список доступных агентов.
    * @returns объект со списком агентов
    */
   async getAgents(): Promise<{ agents: Agent[] }> {
@@ -47,7 +47,7 @@ class ApiClient {
 
   // Models
   /**
-   * Получает список моделей.
+   * Получаем список моделей.
    * @param provider - фильтр по провайдеру (опционально)
    * @returns объект со списком моделей
    */
@@ -57,7 +57,7 @@ class ApiClient {
   }
 
   /**
-   * Получает динамический список бесплатных моделей от OpenRouter API.
+   * Получаем динамический список бесплатных моделей от OpenRouter API.
    * @returns объект со списком моделей и метаданными кэширования
    */
   async getOpenRouterFreeModels(): Promise<{ models: ModelInfo[]; cached: boolean; count?: number; error?: string }> {
@@ -66,7 +66,7 @@ class ApiClient {
 
   // Sessions
   /**
-   * Создает новую сессию.
+   * Создаем новую сессию.
    * @param agentType - тип агента
    * @param userId - ID пользователя (по умолчанию 'default')
    * @param modelId - ID модели (опционально)
@@ -84,7 +84,7 @@ class ApiClient {
   }
 
   /**
-   * Получает список сессий.
+   * Получаем список сессий.
    * @param agentType - фильтр по типу агента (опционально)
    * @returns объект со списком сессий
    */
@@ -94,7 +94,7 @@ class ApiClient {
   }
 
   /**
-   * Получает историю конкретной сессии.
+   * Получаем историю конкретной сессии.
    * @param agentType - тип агента
    * @param sessionId - ID сессии
    * @returns история сессии
@@ -104,7 +104,7 @@ class ApiClient {
   }
 
   /**
-   * Удаляет сессию.
+   * Удаляем сессию.
    * @param agentType - тип агента
    * @param sessionId - ID сессии
    * @returns статус успеха
@@ -114,7 +114,7 @@ class ApiClient {
   }
 
   /**
-   * Получает список файлов сессии.
+   * Получаем список файлов сессии.
    * @param agentType - тип агента
    * @param sessionId - ID сессии
    * @returns списки файлов (input и workspace)
@@ -128,7 +128,7 @@ class ApiClient {
   }
 
   /**
-   * Получает логи сессии.
+   * Получаем логи сессии.
    * @param agentType - тип агента
    * @param sessionId - ID сессии
    * @returns список логов
@@ -142,7 +142,7 @@ class ApiClient {
 
   // Chat Streaming
   /**
-   * Реализует потоковый чат с агентом.
+   * Реализуем потоковый чат с агентом.
    * @param agentType - тип агента
    * @param sessionId - ID сессии
    * @param message - сообщение пользователя
@@ -281,7 +281,7 @@ class ApiClient {
 
   // File upload
   /**
-   * Загружает файл.
+   * Загружаем файл.
    * @param agentType - тип агента
    * @param sessionId - ID сессии
    * @param file - файл для загрузки

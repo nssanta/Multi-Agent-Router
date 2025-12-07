@@ -57,15 +57,14 @@ class VerificationResult:
 
 class CodeVerifier:
     """
-    Верификатор кода
+    Верификатор кода.
     
     Выполняет проверки:
     1. Статический анализ (синтаксис Python)
     2. LLM анализ (логика, security, etc.)
     
-    Параметры:
-        llm_provider: LLM для анализа
-        verifier_model_id: ID модели для верификатора (None = та же модель)
+    :param llm_provider: LLM для анализа
+    :param verifier_model_id: ID модели для верификатора (None = та же модель)
     """
     
     def __init__(
@@ -84,15 +83,12 @@ class CodeVerifier:
         context: str = ""
     ) -> VerificationResult:
         """
-        Проверить код
+        Проверяем код.
         
-        Args:
-            code: Код для проверки
-            language: Язык программирования
-            context: Дополнительный контекст (задача, требования)
-            
-        Returns:
-            VerificationResult
+        :param code: Код для проверки
+        :param language: Язык программирования
+        :param context: Дополнительный контекст (задача, требования)
+        :return: VerificationResult
         """
         logger.info(f"Verifier: Starting verification for {language} code")
         
@@ -138,7 +134,7 @@ class CodeVerifier:
         )
     
     def _check_python_syntax(self, code: str) -> List[Issue]:
-        """Проверить синтаксис Python"""
+        """Проверяем синтаксис Python"""
         issues = []
         
         try:
@@ -207,7 +203,7 @@ class CodeVerifier:
             return f"LLM анализ не удался: {str(e)}"
     
     def _parse_llm_issues(self, analysis: str) -> List[Issue]:
-        """Извлечь issues из LLM анализа"""
+        """Извлекаем issues из LLM анализа"""
         issues = []
         
         # Ищем проблемы по паттернам
@@ -245,7 +241,7 @@ class CodeVerifier:
         return issues
     
     def _generate_summary(self, status: VerificationStatus, issues: List[Issue]) -> str:
-        """Сгенерировать краткое резюме"""
+        """Генерируем краткое резюме"""
         
         if status == VerificationStatus.PASSED:
             return "✅ Код прошёл верификацию. Критических проблем не обнаружено."
@@ -278,17 +274,14 @@ def verify_code(
     verifier_model_id: Optional[str] = None
 ) -> VerificationResult:
     """
-    Удобная функция для верификации кода
+    Удобная функция для верификации кода.
     
-    Args:
-        llm_provider: LLM провайдер
-        code: Код для проверки
-        language: Язык программирования
-        context: Контекст задачи
-        verifier_model_id: ID модели для верификатора
-        
-    Returns:
-        VerificationResult
+    :param llm_provider: LLM провайдер
+    :param code: Код для проверки
+    :param language: Язык программирования
+    :param context: Контекст задачи
+    :param verifier_model_id: ID модели для верификатора
+    :return: VerificationResult
     """
     verifier = CodeVerifier(llm_provider, verifier_model_id)
     return verifier.verify(code, language, context)

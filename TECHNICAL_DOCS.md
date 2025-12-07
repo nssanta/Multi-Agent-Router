@@ -18,7 +18,107 @@ Multi-Agent AI Router — это open-source платформа для рабо�
 
 ## Текущая версия
 
-*Версия: 1.4.0* — Crypto Analyst Agent + Real-time Binance Data
+*Версия: 1.5.0* — Security Hardening + Sandbox Isolation
+
+## 🔐 Безопасность
+
+### Архитектура безопасности
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
+│   Frontend  │────▶│   Backend    │────▶│   Sandbox       │
+│   (React)   │     │   (FastAPI)  │     │   (Isolated)    │
+└─────────────┘     └──────────────┘     └─────────────────┘
+                           │                     │
+                    Path Validation        No Network Access
+                    Session Isolation      Resource Limits
+                                          Non-root User
+```
+
+### Реализованные защиты
+
+#### 1. Path Traversal Protection
+
+Все файловые операции валидируются через `validate_path_security()`:
+
+```python
+# backend/tools/file_tools.py
+def validate_path_security(path: str, workspace: Path) -> Path:
+    """Предотвращает Path Traversal атаки."""
+    workspace_resolved = workspace.resolve()
+    
+    # Убираем leading slash
+    clean_path = path.lstrip("/").lstrip("\\")
+    
+    # Резолвим и проверяем
+    resolved = (workspace / clean_path).resolve()
+    
+    try:
+        resolved.relative_to(workspace_resolved)
+    except ValueError:
+        raise ValueError(f"Access Denied: Path must be within workspace")
+    
+    return resolved
+```
+
+**Защищённые инструменты:**
+- `read_file` — чтение файлов
+- `write_file` — запись файлов  
+- `list_directory` — листинг директорий
+- `search_files` — поиск по файлам
+- `diff` / `apply_diff` — работа с diff
+
+#### 2. Sandbox Container
+
+Код выполняется в изолированном Docker контейнере:
+
+```yaml
+# docker-compose.yml
+sandbox:
+  build: ./sandbox
+  network_mode: none        # Нет доступа к сети
+  read_only: true           # Только чтение FS
+  security_opt:
+    - no-new-privileges:true
+  deploy:
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 1G
+```
+
+**Компоненты sandbox:**
+- `sandbox/Dockerfile` — образ с minimal Python
+- `sandbox/sandbox_server.py` — FastAPI сервер для выполнения кода
+- `backend/core/sandbox_client.py` — HTTP клиент для sandbox
+
+#### 3. Resource Limits
+
+| Ресурс | Лимит |
+|--------|-------|
+| CPU | 1 core max |
+| Memory | 1GB max |
+| Timeout | 300 seconds |
+| Temp storage | 100MB |
+
+### Threat Model
+
+| Угроза | Защита | Статус |
+|--------|--------|--------|
+| Path Traversal | `validate_path_security()` | ✅ Защищено |
+| RCE в backend | Sandbox isolation | ✅ Защищено |
+| Resource exhaustion | Docker limits | ✅ Защищено |
+| Network exfiltration | `network_mode: none` | ✅ Защищено |
+| Privilege escalation | Non-root user | ✅ Защищено |
+
+### Production Recommendations
+
+Для production-окружения рекомендуется:
+
+1. **gVisor** — дополнительная изоляция на уровне ядра
+2. **Firecracker** — microVM для максимальной изоляции
+3. **Per-request containers** — новый контейнер на каждый запрос
+4. **Secrets management** — Vault/KMS вместо .env
 
 ## Установка и запуск
 
@@ -135,7 +235,7 @@ Multi-Agent AI Router — это open-source платформа для рабо�
     *   `smart_search.py`: Инструмент для умного поиска.
     *   `web_reader.py`: Инструмент для чтения веб-страниц.
     *   `web_search.py`: Инструмент для поиска в интернете.
-    *   `file_tools.py`: Инструменты для работы с файлами (read_file, write_file, list_directory, run_code, search_files).
+    *   `file_tools.py`: Инструменты для работы с файлами (read_file, write_file, list_directory, run_code, search_files). **Все операции защищены от Path Traversal через `validate_path_security()`**.
     *   `base.py`: Базовые классы ToolResult, BaseTool, ToolRegistry.
     *   `crypto/`: Инструменты для криптоанализа.
         *   `binance_client.py`: HTTP клиент Binance API с rate limiting и retry логикой.

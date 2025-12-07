@@ -128,7 +128,11 @@ class FileOperationError(AgentError):
 
 
 def error_handler(func: Callable) -> Callable:
-    """Декоратор для обработки ошибок."""
+    """
+    Декоратор для обработки ошибок.
+    :param func: декорируемая функция
+    :return: обернутая функция
+    """
     
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -157,7 +161,11 @@ def error_handler(func: Callable) -> Callable:
 
 
 async def async_error_handler(func: Callable) -> Callable:
-    """Асинхронный декоратор для обработки ошибок."""
+    """
+    Асинхронный декоратор для обработки ошибок.
+    :param func: декорируемая асинхронная функция
+    :return: обернутая асинхронная функция
+    """
     
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -186,7 +194,12 @@ async def async_error_handler(func: Callable) -> Callable:
 
 
 def log_agent_action(session_id: str, action: str, details: Dict[str, Any] = None):
-    """Логирование действий агента."""
+    """
+    Логируем действия агента.
+    :param session_id: ID сессии
+    :param action: название действия
+    :param details: дополнительные детали (словарь)
+    """
     log_entry = {
         "timestamp": datetime.now().isoformat(),
         "session_id": session_id,
@@ -197,7 +210,11 @@ def log_agent_action(session_id: str, action: str, details: Dict[str, Any] = Non
 
 
 def format_error_for_user(error: AgentError) -> str:
-    """Форматирование ошибки для отображения пользователю."""
+    """
+    Форматируем ошибку для отображения пользователю.
+    :param error: объект ошибки AgentError
+    :return: отформатированное сообщение об ошибке
+    """
     if error.recoverable:
         return f"⚠️ {error.user_message}\n\n💡 Попробуйте повторить запрос или нажмите кнопку Retry."
     else:

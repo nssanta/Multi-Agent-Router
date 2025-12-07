@@ -10,23 +10,11 @@ from backend.core.web_utils import clean_ui_artifacts
 
 def duckduckgo_search(query: str, max_results: int = 5) -> List[Dict[str, str]]:
     """
-    Search the web using DuckDuckGo
+    Выполняем поиск в DuckDuckGo.
     
-    Args:
-        query: Search query string
-        max_results: Maximum number of results to return (default: 5)
-    
-    Returns:
-        List of dictionaries with keys:
-            - title: Page title
-            - url: Page URL
-            - snippet: Short description/snippet
-            - search_time: Time taken for search (seconds)
-    
-    Example:
-        results = duckduckgo_search("Python web scraping", max_results=3)
-        for result in results:
-            print(f"{result['title']}: {result['url']}")
+    :param query: поисковый запрос
+    :param max_results: максимальное количество результатов
+    :return: список результатов с полями title, url, snippet, search_time
     """
     import time
     
@@ -66,13 +54,10 @@ def duckduckgo_search(query: str, max_results: int = 5) -> List[Dict[str, str]]:
 
 def format_search_results(results: List[Dict[str, str]]) -> str:
     """
-    Format search results as readable text for LLM
+    Форматируем результаты поиска в читаемый текст для LLM.
     
-    Args:
-        results: List of search result dictionaries
-    
-    Returns:
-        Formatted string with numbered results
+    :param results: список словарей с результатами
+    :return: отформатированная строка
     """
     if not results:
         return "⚠️ **No results found** - Search returned 0 results. Cannot provide information on this query."

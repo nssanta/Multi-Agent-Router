@@ -33,7 +33,7 @@ def create_coder_agent(
     verifier_model_id: Optional[str] = None
 ) -> Agent:
     """
-    Создает Coder Agent с полным функционалом.
+    Создаем Coder Agent с полным функционалом.
     
     :param llm_provider: LLM провайдер
     :param session_path: Путь к директории сессии
@@ -53,7 +53,7 @@ def create_coder_agent(
     
     def get_instruction_with_context(state: AgentState) -> str:
         """
-        Динамически добавляет контекст в промпт.
+        Динамически добавляем контекст в промпт.
         :param state: состояние агента
         :return: инструкция с контекстом
         """
@@ -109,7 +109,7 @@ def create_coder_agent(
     
     def before_run(state: AgentState) -> None:
         """
-        Выполняет подготовку перед запуском.
+        Выполняем подготовку перед запуском.
         :param state: состояние агента
         """
         
@@ -127,7 +127,7 @@ def create_coder_agent(
     
     def after_run(state: AgentState, response: str) -> str:
         """
-        Выполняет пост-обработку ответа агента:
+        Выполняем пост-обработку ответа агента:
         1. Ищем команды инструментов в ответе
         2. Выполняем инструменты
         3. Если есть код - верифицируем
@@ -313,8 +313,8 @@ def create_coder_agent(
 
 def _extract_tool_commands(text: str) -> List[Dict[str, Any]]:
     """
-    Извлекает команды инструментов из текста.
-    Использует новую универсальную систему ToolCallExtractor.
+    Извлекаем команды инструментов из текста.
+    Используем новую универсальную систему ToolCallExtractor.
     :param text: текст ответа
     :return: список команд
     """
@@ -342,7 +342,7 @@ def _execute_tool(
     tools: List[Any]
 ) -> ToolResult:
     """
-    Выполняет инструмент.
+    Выполняем инструмент.
     :param command: словарь с командой
     :param tools: список доступных инструментов
     :return: результат выполнения
@@ -373,7 +373,7 @@ def _format_tool_results(
     results: List[ToolResult]
 ) -> str:
     """
-    Форматирует результаты выполнения инструментов.
+    Форматируем результаты выполнения инструментов.
     :param commands: список команд
     :param results: список результатов
     :return: отформатированная строка
@@ -407,7 +407,7 @@ def _format_tool_results(
 
 def _should_use_tot(user_message: str, response: str) -> bool:
     """
-    Определяет, нужен ли Tree of Thoughts.
+    Определяем, нужен ли Tree of Thoughts.
     :param user_message: сообщение пользователя
     :param response: ответ агента
     :return: True если нужен ToT
@@ -439,7 +439,7 @@ def _should_use_tot(user_message: str, response: str) -> bool:
 
 def _extract_code_blocks(text: str) -> List[tuple]:
     """
-    Извлекает блоки кода из markdown.
+    Извлекаем блоки кода из markdown.
     :param text: текст markdown
     :return: список кортежей (язык, код)
     """
@@ -452,7 +452,7 @@ def _extract_code_blocks(text: str) -> List[tuple]:
 
 def _get_context(state: AgentState) -> str:
     """
-    Получает контекст сессии для ToT.
+    Получаем контекст сессии для ToT.
     :param state: состояние агента
     :return: строка контекста
     """
@@ -481,7 +481,7 @@ def _log_agent_run(
     actions: List[Dict]
 ) -> None:
     """
-    Логирует запуск агента.
+    Логируем запуск агента.
     :param session_path: путь к сессии
     :param user_message: сообщение пользователя
     :param response: ответ агента
