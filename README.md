@@ -60,41 +60,48 @@ Output: [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
 
 ---
 
-### 📊 Crypto Analyst Agent
+### 📊 Crypto Analyst Agent v2.0
 *Professional cryptocurrency analyzer with real-time Binance data*
 
 ![Crypto Analyst](crypto_screen.png)
 
 **Real-time data from Binance API:**
 - 💰 **Price & Candles** — Current price, 24h change, multi-timeframe data
-- 📈 **Technical Indicators** — RSI, MACD, EMA on 5m/1h/4h/1d timeframes
-- 📊 **Orderbook Analysis** — Deltas at 1.5%, 5%, 15%, 60% from price
-- 🔄 **Trade Flow** — Buy/sell pressure, whale activity detection
+- 📈 **12 Technical Indicators** — RSI, MACD, EMA, Bollinger, StochRSI, ADX, ATR, VWAP, OBV, Ichimoku, SuperTrend, CMF
+- 📊 **Orderbook Analysis** — Deltas at 7 levels (1.5%, 3%, 5%, 15%, 30%, 60%, 90%)
+- 🔄 **Trade Flow** — Buy/sell pressure, whale activity, trade velocity, size distribution
+- 📉 **Futures Data** — Funding Rate, Open Interest, Long/Short Ratio
+- 🎯 **Smart Money Concepts** — FVG, Order Blocks, Market Structure (HH/HL/LL/LH), Liquidity Zones
+- 🗓️ **Multi-Timeframe** — Short/Medium/Long-term analysis (3 horizons)
+- 📊 **Volume Analysis** — Volume Delta, Relative Volume, Volume Profile (POC, VAH, VAL)
 - 😨 **Market Context** — Fear & Greed Index, total market cap
 
-**Example Output:**
+**Modular Queries:**
 ```
-📊 BTC/USDT Analysis | 2025-12-07
-
-💰 Price: $88,993.33 (-0.80% 24h)
-📈 Trend: Bearish (3/4 timeframes)
-
-Technical:
-- RSI 1h: 40.15 (neutral-weak)
-- MACD: bearish on 1h/4h/1d
-
-Orderbook Deltas:
-- 1.5%: Bid=85.99, Ask=81.22, 🟢 buy pressure
-- 5%:   Bid=85.99, Ask=81.22, 🟢 buy pressure
-
-Trade Flow:
-- Buy: 259 trades, Sell: 741 trades
-- Volume ratio: 10.2% buy
-- Whale direction: sell
-
-😨 Fear & Greed: 20 (Extreme Fear)
-🔑 Support: $88,900 | Resistance: $89,100
+"analyze BTC"      → Full analysis
+"indicators ETH"  → Technical indicators only
+"orderbook SOL"   → Orderbook analysis
+"smc BTC"         → Smart Money Concepts
+"sentiment ETH"   → Fear&Greed + Funding Rate
+"volume SOL"      → Volume analysis
+"mtf BTC"         → Multi-timeframe
 ```
+
+**Example Analysis:**
+
+> 📉 **BTC/USDT Analysis** | 2025-12-07
+>
+> **Price:** $89,690.73 (-0.03% 24h)
+>
+> **MTF Signal:** Bearish (Short: bullish, Medium: mixed, Long: bearish)
+>
+> **Order Flow:** 82.6% buys — BUT whales selling (6 whale sells, 0 buys)
+>
+> **Smart Money:** Downtrend structure (2 LH, 2 LL), 3 bearish FVG targets
+>
+> **Futures:** L/S Ratio 2.17 (longs overloaded — squeeze risk)
+>
+> **Verdict: SELL** — Retail buying into whale distribution
 
 ---
 
@@ -138,6 +145,14 @@ This project implements multiple layers of security for code execution:
 | **👤 Non-root User** | Sandbox runs as unprivileged user |
 
 > ⚠️ **Disclaimer**: This is a demonstration project. For production use, consider additional hardening (gVisor, Firecracker, etc.)
+
+### ⚠️ Known Limitations
+
+| Issue | Description | Status |
+|-------|-------------|--------|
+| **Sandbox Fallback** | If sandbox is unavailable, code may execute locally | ⚠️ TODO: Add explicit flag |
+| **Context Window** | Long conversations may exceed token limits (no RAG) | Demo scope |
+| **Regex JSON Fallback** | Legacy fallback for non-native tool calling models | Use Gemini 2.5 Pro |
 
 ---
 

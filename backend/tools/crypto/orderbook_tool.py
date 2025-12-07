@@ -11,7 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 def calculate_delta_at_level(orderbook: OrderBook, price: float, percent: float) -> Dict[str, Any]:
-    """Расчёт дельты на ценовом уровне"""
+    """
+    Рассчитываем дельту на ценовом уровне.
+    :param orderbook: Данные стакана
+    :param price: Текущая цена
+    :param percent: Процент отклонения от цены
+    :return: Результаты анализа дельты
+    """
     lower_bound = price * (1 - percent / 100)
     upper_bound = price * (1 + percent / 100)
     
@@ -30,7 +36,12 @@ def calculate_delta_at_level(orderbook: OrderBook, price: float, percent: float)
 
 
 def find_support_resistance(orderbook: OrderBook, num_levels: int = 5) -> Tuple[List[Dict], List[Dict]]:
-    """Найти уровни поддержки и сопротивления"""
+    """
+    Находим уровни поддержки и сопротивления на основе стакана.
+    :param orderbook: Данные стакана
+    :param num_levels: Количество уровней для поиска
+    :return: Списки уровней поддержки и сопротивления
+    """
     sorted_bids = sorted(orderbook.bids, key=lambda x: x[1], reverse=True)
     sorted_asks = sorted(orderbook.asks, key=lambda x: x[1], reverse=True)
     
@@ -44,7 +55,12 @@ def find_support_resistance(orderbook: OrderBook, num_levels: int = 5) -> Tuple[
 
 
 def get_orderbook(symbol: str, limit: int = 1000) -> Dict[str, Any]:
-    """Получить стакан с расчётом дельт"""
+    """
+    Получаем стакан с расчётом дельт и уровней.
+    :param symbol: Торговая пара
+    :param limit: Глубина стакана
+    :return: Данные стакана с аналитикой
+    """
     try:
         client = get_binance_client()
         orderbook = client.get_order_book(symbol, limit)
@@ -55,7 +71,7 @@ def get_orderbook(symbol: str, limit: int = 1000) -> Dict[str, Any]:
         current_price = orderbook.mid_price
         
         deltas = {}
-        for level in [1.5, 5, 15, 60]:
+        for level in [1.5, 3, 5, 15, 30, 60, 90]:
             deltas[f"{level}%"] = calculate_delta_at_level(orderbook, current_price, level)
         
         total_bid = sum(qty for _, qty in orderbook.bids)
@@ -85,7 +101,9 @@ def get_orderbook(symbol: str, limit: int = 1000) -> Dict[str, Any]:
 
 @register_tool
 class OrderbookTool(BaseTool):
-    """Инструмент для получения стакана"""
+    """
+    Инструмент для получения стакана.
+    """
     
     name = "get_orderbook"
     description = "Получить стакан заявок с Binance с расчётом дельт."

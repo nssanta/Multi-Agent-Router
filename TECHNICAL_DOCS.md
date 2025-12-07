@@ -18,7 +18,7 @@ Multi-Agent AI Router — это open-source платформа для рабо�
 
 ## Текущая версия
 
-*Версия: 1.5.0* — Security Hardening + Sandbox Isolation
+*Версия: 2.0.0* — Crypto Analyst Agent v2.0 + Security Hardening
 
 ## 🔐 Безопасность
 
@@ -241,10 +241,14 @@ sandbox:
         *   `binance_client.py`: HTTP клиент Binance API с rate limiting и retry логикой.
         *   `klines_tool.py`: Получение свечей (OHLCV).
         *   `trades_tool.py`: Получение последних сделок.
-        *   `orderbook_tool.py`: Получение стакана с расчётом дельт.
-        *   `indicators_tool.py`: Расчёт RSI, MACD, EMA через pandas-ta.
-        *   `trades_analysis_tool.py`: Глубокий анализ потока сделок, whale activity.
-        *   `orderbook_analysis_tool.py`: Анализ дельт стакана на 1.5%, 5%, 15%, 60%.
+        *   `orderbook_tool.py`: Получение стакана с расчётом дельт на **7 уровнях** (1.5%, 3%, 5%, 15%, 30%, 60%, 90%).
+        *   `indicators_tool.py`: Расчёт **12 индикаторов** (RSI, MACD, EMA, Bollinger, StochRSI, ADX, ATR, VWAP, OBV, Ichimoku, SuperTrend, CMF).
+        *   `trades_analysis_tool.py`: Глубокий анализ потока сделок, whale activity, временные метрики, распределение по размерам.
+        *   `orderbook_analysis_tool.py`: Анализ дельт стакана и ликвидности.
+        *   `futures_tool.py`: **[NEW v2.0]** Funding Rate, Open Interest, Long/Short Ratio с Binance Futures API.
+        *   `smart_money_tool.py`: **[NEW v2.0]** Smart Money Concepts — FVG, Order Blocks, структура рынка (HH/HL/LL/LH), зоны ликвидности.
+        *   `mtf_analysis_tool.py`: **[NEW v2.0]** Multi-Timeframe анализ на 3 горизонтах (краткосрок/среднесрок/долгосрок).
+        *   `volume_analysis_tool.py`: **[NEW v2.0]** Volume Delta, Relative Volume, Volume Profile (POC, VAH, VAL).
 *   `core/tool_calling/`: Универсальная система Tool Calling.
     *   `base.py`: Базовые типы (ToolCall, ToolExecutionResult, ToolCallBatch).
     *   `text_extractor.py`: Многоуровневый парсер для извлечения tool calls из текста LLM.
