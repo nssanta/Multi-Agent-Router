@@ -24,7 +24,8 @@ class SessionManager:
     """Менеджер сессий агентов"""
     
     def __init__(self, workspace_dir: str = "./workspace/sessions"):
-        self.workspace_dir = Path(workspace_dir)
+        # Преобразуем в абсолютный путь
+        self.workspace_dir = Path(workspace_dir).resolve()
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
     
     def create_session(

@@ -9,7 +9,7 @@
 - AgentState: состояние агента (замена CallbackContext)
 """
 
-from typing import Callable, Optional, Dict, List, Any
+from typing import Callable, Optional, Dict, List, Any, Iterator
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor
 import logging
@@ -70,6 +70,7 @@ class Agent:
         instruction: str | Callable[[AgentState], str],
         global_instruction: str = "",
         tools: Optional[List[Callable]] = None,
+        tool_definitions: Optional[List[Dict]] = None,  # For native tool calling
         code_executor: Optional[LocalCodeExecutor] = None,
         before_callback: Optional[Callable[[AgentState], None]] = None,
         after_callback: Optional[Callable[[AgentState, str], None]] = None,
@@ -81,12 +82,21 @@ class Agent:
         self.instruction = instruction
         self.global_instruction = global_instruction
         self.tools = tools or []
+        self.tool_definitions = tool_definitions or []
         self.code_executor = code_executor
         self.before_callback = before_callback
         self.after_callback = after_callback
         self.include_contents = include_contents
         self.temperature = temperature
         self.state = AgentState()
+    
+    def _supports_native_tools(self) -> bool:
+        """Проверить поддерживает ли провайдер native tool calling"""
+        return (
+            hasattr(self.llm_provider, 'supports_native_tools') and 
+            self.llm_provider.supports_native_tools() and
+            len(self.tool_definitions) > 0
+        )
     
     def _get_instruction(self) -> str:
         """Получить instruction (может быть строкой или функцией)"""
@@ -96,147 +106,404 @@ class Agent:
     
     def run(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> str:
         """
-        Запустить агента
+        Запустить агента (синхронная обертка над streaming)
+        """
+        response_content = ""
+        for event in self.run_stream(user_input, history):
+            if event["type"] == "token":
+                response_content += event["content"]
+        return response_content
+
+    def run_stream(self, user_input: str, history: Optional[List[Dict[str, str]]] = None) -> Iterator[Dict[str, str]]:
+        """
+        Запустить агента в режиме стриминга с поддержкой multi-turn loops.
         
-        Args:
-            user_input: Текущее сообщение пользователя
-            history: История предыдущих сообщений [{"role": "user", "content": "..."}, ...]
-        
-        Returns:
-            Ответ агента
+        Yields:
+            Dict[str, str]: {
+                "type": "token" | "status" | "error" | "log",
+                "content": "..."
+            }
         """
         from datetime import datetime
         import json
         
-        logger.info(f"[{self.name}] Starting")
+        logger.info(f"[{self.name}] Starting run_stream")
         
-        # Сохранить user_input в state для доступа в callbacks
+        # Init state
         self.state.set("current_user_input", user_input)
-        
-        # Before callback
         if self.before_callback:
             self.before_callback(self.state)
+
+        # Build initial history
+        current_history = list(history) if history else []
+        current_history.append({"role": "user", "content": user_input})
         
-        # Построить промт с историей
-        instruction = self._get_instruction()
+        max_turns = 15  # Limit autonomous turns
+        last_tool_sig = None
+        consecutive_malformed_count = 0
         
-        # Базовый промпт
-        full_prompt = f"{self.global_instruction}\n\n{instruction}\n\n"
+        for turn in range(max_turns):
+            logger.info(f"[{self.name}] Turn {turn+1}/{max_turns}")
+            
+            # Prepare Prompt
+            instruction = self._get_instruction()
+            full_prompt = f"{self.global_instruction}\n\n{instruction}\n\n"
+            
+            # History
+            if current_history:
+                full_prompt += "**Conversation History:**\n"
+                for msg in current_history[-20:]: # Last 20 messages
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    if role == "user":
+                        full_prompt += f"User: {content}\n"
+                    elif role == "assistant":
+                        full_prompt += f"Assistant: {content}\n"
+                    elif role == "system": # Tool outputs
+                        full_prompt += f"System: {content}\n"
+                full_prompt += "\n"
+            
+            # Add "Response:" marker? Not strictly needed for chat models but helps
+            # full_prompt += "Assistant: " 
+
+            # Log request
+            if self.code_executor and hasattr(self.code_executor, 'logs_path'):
+                 self._log_llm_request(user_input, full_prompt)
+
+            # --- GENERATION (Native Tools or Text-Based) ---
+            full_response_text = ""
+            tool_call = None
+            yield {"type": "status", "content": "Thinking..."}
+            
+            try:
+                # Check if we can use native tool calling
+                use_native = self._supports_native_tools()
+                
+                if use_native:
+                    # === NATIVE TOOL CALLING ===
+                    logger.info(f"[{self.name}] Using native tool calling")
+                    result = self.llm_provider.generate_with_tools(
+                        full_prompt, 
+                        self.tool_definitions,
+                        temperature=self.temperature
+                    )
+                    
+                    # Handle text response
+                    if result.get("text"):
+                        full_response_text = result["text"]
+                        yield {"type": "token", "content": full_response_text}
+                    
+                    # Handle tool calls
+                    if result.get("tool_calls"):
+                        tc = result["tool_calls"][0]  # Take first tool call
+                        tool_call = {
+                            "tool": tc["name"],
+                            "params": tc.get("args", {})
+                        }
+                        # Add visual indicator of tool call
+                        tool_indicator = f"\n\n```json\n{{\"tool\": \"{tc['name']}\", \"params\": {json.dumps(tc.get('args', {}))}}}\n```"
+                        full_response_text += tool_indicator
+                        yield {"type": "token", "content": tool_indicator}
+                else:
+                    # === TEXT-BASED TOOL CALLING (fallback) ===
+                    for chunk in self.llm_provider.stream(full_prompt, temperature=self.temperature):
+                        full_response_text += chunk
+                        yield {"type": "token", "content": chunk}
+                    
+                    # Extract tool call from text
+                    tool_call = self._extract_json_tool_call(full_response_text)
+                
+                # Turn complete. Log it.
+                if self.code_executor and hasattr(self.code_executor, 'logs_path'):
+                    self._log_llm_response(full_response_text, success=True)
+                    
+                # Add assistant response to history
+                current_history.append({"role": "assistant", "content": full_response_text})
+                
+                # --- TOOL EXECUTION ---
+                
+                if tool_call and self.code_executor:
+                    consecutive_malformed_count = 0  # Reset counter on valid tool call
+                    tool_name = tool_call.get("tool")
+                    tool_params = tool_call.get("params", {})
+                    
+                    # LOOP DETECTION
+                    import json
+                    try:
+                        # Create a deterministic signature of the tool call
+                        tool_sig = (tool_name, json.dumps(tool_params, sort_keys=True))
+                    except:
+                        tool_sig = (tool_name, str(tool_params))
+
+                    if tool_sig == last_tool_sig:
+                        logger.warning(f"[{self.name}] Detected duplicate tool call loop: {tool_name}")
+                        yield {"type": "status", "content": "Skipping duplicate tool call..."}
+                        
+                        warning_msg = "System: YOU ARE LOOPING. You just executed this exact tool with these exact parameters. STOP. Analyze the previous result and either PROCEED to the next step or output your Final Answer."
+                        current_history.append({"role": "system", "content": warning_msg})
+                        
+                        # Add system event to persist this warning
+                        yield {"type": "system", "content": warning_msg}
+                        
+                        continue
+                    
+                    last_tool_sig = tool_sig
+                    
+                    yield {"type": "status", "content": f"Running tool: {tool_name}..."}
+                    logger.info(f"[{self.name}] Executing tool: {tool_name}")
+                    
+                    # Execute
+                    try:
+                        result_text = ""
+                        if tool_name == "run_code":
+                            code = tool_params.get("code")
+                            if code:
+                                res = self.code_executor.execute_code(code)
+                                stdout = res.get('stdout', '')
+                                stderr = res.get('stderr', '')
+                                success = res.get('success', False)
+                                
+                                if success:
+                                    result_text = f"Execution Result:\n{stdout}" if stdout else "Code executed successfully (no output)"
+                                else:
+                                    result_text = f"Execution Failed:\n{stderr}" if stderr else "Code execution failed"
+                            else:
+                                result_text = "Error: No 'code' parameter provided for run_code"
+                                
+                        elif tool_name == "write_file":
+                            path = tool_params.get("path")
+                            content = tool_params.get("content")
+                            if path:
+                                full_path = self.code_executor.workspace_path / path
+                                full_path.parent.mkdir(parents=True, exist_ok=True)
+                                with open(full_path, 'w', encoding='utf-8') as f:
+                                    if content is None:
+                                         # Handle empty content gracefuly
+                                         f.write("")
+                                    else:
+                                         f.write(content)
+                                result_text = f"File {path} written successfully."
+                            else:
+                                result_text = "Error: Missing path for write_file"
+                                
+                        elif tool_name == "read_file":
+                            path = tool_params.get("path")
+                            if path:
+                                full_path = self.code_executor.workspace_path / path
+                                if full_path.exists():
+                                    with open(full_path, 'r', encoding='utf-8') as f:
+                                        result_text = f"File Content ({path}):\n{f.read()}"
+                                else:
+                                    result_text = f"Error: File {path} not found."
+                            else:
+                                result_text = "Error: Missing path for read_file"
+                                
+                        elif tool_name == "list_directory":
+                            import os
+                            files = os.listdir(self.code_executor.workspace_path)
+                            result_text = f"Directory listing:\n{', '.join(files)}"
+                            
+                        else:
+                            result_text = f"Error: Unknown tool '{tool_name}'"
+
+                        # Yield log event
+                        yield {"type": "log", "content": f"Tool {tool_name} output: {result_text[:200]}..."}
+                        
+                        # Yield system event for persistency
+                        yield {"type": "system", "content": result_text}
+
+                        # Add Result to History
+                        current_history.append({"role": "system", "content": result_text})
+                        
+                        # CONTINUE LOOP -> The agent will see the result in the next turn
+                        continue 
+                        
+                    except Exception as e:
+                        err_msg = f"Tool execution error: {e}"
+                        logger.error(err_msg)
+                        current_history.append({"role": "system", "content": err_msg})
+                        yield {"type": "system", "content": err_msg} # Persist error too
+                        continue
+
+                else:
+                    # No detected tool call. 
+                    # CHECK FOR MALFORMED JSON
+                    # If the model plainly tried to use a tool (contains "tool": or ```json with "tool")
+                    # but our extractor failed, we should warn it.
+                    potential_malformed = False
+                    lower_text = full_response_text.lower()
+                    if '"tool":' in lower_text or "'tool':" in lower_text:
+                         potential_malformed = True
+                    
+                    if potential_malformed:
+                        consecutive_malformed_count += 1
+                        logger.warning(f"[{self.name}] Detected potential malformed tool call ({consecutive_malformed_count}/3). RAW RESPONSE:\n{full_response_text[:1000]}")
+                        
+                        if consecutive_malformed_count > 3:
+                            err_msg = "[Error: System] Too many formatting errors. Aborting turn to prevent loop."
+                            current_history.append({"role": "system", "content": err_msg})
+                            yield {"type": "error", "content": err_msg}
+                            break
+                        
+                        # More helpful error message with concrete example
+                        err_msg = """⚠️ System: Your last tool call was not valid JSON. Please correct it. REQUIRED FORMAT:
+
+```json
+{"tool": "write_file", "params": {"path": "example.py", "content": "print('hello')"}}
+```
+
+Do not wrap the JSON in XML tags or other text. Ensure strict JSON syntax."""
+                        current_history.append({"role": "system", "content": err_msg})
+                        yield {"type": "system", "content": err_msg}
+                        yield {"type": "status", "content": "Self-correcting JSON..."}
+                        continue
+
+                    # Standard response -> Finish
+                    break
+                    
+            except Exception as e:
+                logger.error(f"Error in run_stream: {e}")
+                # If we haven't retried too much within this turn (not easy to track here without bigger refactor)
+                # For now, just report error.
+                error_msg = f"Error: {str(e)}"
+                yield {"type": "error", "content": error_msg}
+                break
+
+        yield {"type": "status", "content": "Done"}
+        logger.info(f"[{self.name}] Stream Complete")
+
+    def _log_llm_request(self, user_input: str, prompt: str):
+        """Log the LLM request"""
+        logger.info(f"[{self.name}] LLM Request: {user_input}")
+    
+    def _log_llm_response(self, response: str, success: bool):
+        """Log the LLM response"""
+        # Log first 1000 chars to debug
+        logger.info(f"[{self.name}] LLM Response (Success={success}, Len={len(response)}): {response[:1000]}")
+
+    def _extract_json_tool_call(self, text: str) -> Optional[Dict]:
+        """
+        Extract JSON tool call from text using robust parsing.
+        """
+        import json
+        import re
+        import ast
+
+        # 1. Try to find a code block containing JSON
+        # Matches ```json { ... } ``` or just ``` { ... } ```
+        code_block_pattern = r"```(?:json)?\s*(\{.*?\})\s*```"
+        matches = re.findall(code_block_pattern, text, re.DOTALL)
         
-        # Добавить историю сообщений (если есть)
-        if history:
-            full_prompt += "**Conversation History:**\n"
-            for msg in history[-10:]:  # Последние 10 сообщений для контекста
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if role == "user":
-                    full_prompt += f"User: {content}\n"
-                elif role == "assistant":
-                    full_prompt += f"Assistant: {content}\n"
-            full_prompt += "\n"
-        
-        # Текущее сообщение
-        full_prompt += f"User: {user_input}"
-        
-        # Логировать запрос (если есть code_executor с logs_path)
-        if self.code_executor and hasattr(self.code_executor, 'logs_path'):
-            self._log_llm_request(user_input, full_prompt)
-        
-        # Вызвать LLM
+        candidates = []
+        if matches:
+            candidates.extend(matches)
+            
+        # 2. If no code blocks, look for any balanced {...} that might be a tool call
+        # We search for the outermost braces
+        balance = 0
+        start = -1
+        for i, char in enumerate(text):
+            if char == '{':
+                if balance == 0:
+                    start = i
+                balance += 1
+            elif char == '}':
+                balance -= 1
+                if balance == 0 and start != -1:
+                    candidates.append(text[start : i+1])
+                    start = -1
+
+        # Helper to clean and parse JSON
+        def strict_parse(s):
+            try:
+                return json.loads(s)
+            except:
+                return None
+
+        def robust_parse(s):
+            # 1. Remove comments (// ...)
+            s = re.sub(r"//.*", "", s)
+            # 2. Remove comments (/* ... */)
+            s = re.sub(r"/\*.*?\*/", "", s, flags=re.DOTALL)
+            # 3. Fix trailing commas
+            s = re.sub(r",\s*}", "}", s)
+            s = re.sub(r",\s*]", "]", s)
+            
+            # 4. Handle multi-line strings (real newlines in code)
+            # This is tricky. We want to convert real newlines inside quotes to \n
+            # Regex to find content inside double quotes
+            def escape_newlines(m):
+                # Replace real newline with \n
+                return m.group(0).replace('\n', '\\n').replace('\r', '')
+            
+            try:
+                # Capture encoded strings
+                s_fixed = re.sub(r'("(?:[^"\\]|\\.)*")', escape_newlines, s, flags=re.DOTALL)
+                return json.loads(s_fixed)
+            except:
+                pass
+            
+            # 5. Try ast.literal_eval for Python-style dicts (single quotes)
+            try:
+                return ast.literal_eval(s)
+            except:
+                pass
+
+            return None
+
+        # Iterate candidates
+        for candidate in candidates:
+            # Check if it looks like a tool call
+            if "tool" not in candidate and '"tool"' not in candidate and "'tool'" not in candidate:
+                continue
+                
+            # Try strict
+            data = strict_parse(candidate)
+            if data and isinstance(data, dict) and "tool" in data:
+                return data
+                
+            # Try robust
+            data = robust_parse(candidate)
+            if data and isinstance(data, dict) and "tool" in data:
+                return data
+
+        # 3. Fallback: Regex extraction for specific patterns (last resort)
+        # Matches: tool: "name", params: { ... } (keys maybe unquoted)
         try:
-            response = self.llm_provider.generate(full_prompt, temperature=self.temperature)
-            # Логировать ответ
-            if self.code_executor and hasattr(self.code_executor, 'logs_path'):
-                self._log_llm_response(response, success=True)
-        except Exception as e:
-            logger.error(f"LLM generation error in agent '{self.name}': {e}")
-            error_msg = f"Sorry, I encountered an error while processing your request: {e}"
-            # Логировать ошибку
-            if self.code_executor and hasattr(self.code_executor, 'logs_path'):
-                self._log_llm_response(error_msg, success=False, error=str(e))
-            return error_msg
-        
-        # Если есть code executor - выполнить код
-        if self.code_executor:
-            # Извлечь код из ответа (если есть ```python блоки)
-            code = self._extract_code(response)
-            if code:
-                result = self.code_executor.execute_code(code)
-                # Добавить результат в response
-                response += f"\n\nCode execution result:\n{result['stdout']}"
-                # Сохранить в state
-                self.state.set(f"{self.name}_exec_result", result)
-        
-        # After callback - может вернуть модифицированный response
-        if self.after_callback:
-            modified_response = self.after_callback(self.state, response)
-            # Если callback вернул новое значение - использовать его
-            if modified_response is not None:
-                response = modified_response
-        
-        logger.info(f"[{self.name}] Complete")
-        return response
-    
-    def _log_llm_request(self, user_input: str, full_prompt: str):
-        """Логировать LLM запрос"""
-        if not self.code_executor:
-            return
-        
-        from datetime import datetime
-        import json
-        
-        log_file = self.code_executor.logs_path / f"agent_{self.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_request.log"
-        
-        log_data = {
-            "timestamp": datetime.now().isoformat(),
-            "agent": self.name,
-            "user_input": user_input,
-            "full_prompt": full_prompt,
-            "temperature": self.temperature
-        }
-        
-        with open(log_file, 'w', encoding='utf-8') as f:
-            json.dump(log_data, f, indent=2, ensure_ascii=False)
-    
-    def _log_llm_response(self, response: str, success: bool = True, error: str = None):
-        """Логировать LLM ответ"""
-        if not self.code_executor:
-            return
-        
-        from datetime import datetime
-        import json
-        
-        log_file = self.code_executor.logs_path / f"agent_{self.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_response.log"
-        
-        log_data = {
-            "timestamp": datetime.now().isoformat(),
-            "agent": self.name,
-            "response": response,
-            "success": success
-        }
-        
-        if error:
-            log_data["error"] = error
-        
-        with open(log_file, 'w', encoding='utf-8') as f:
-            json.dump(log_data, f, indent=2, ensure_ascii=False)
-    
-    def stream(self, user_input: str):
-        """Стриминг ответа"""
-        if self.before_callback:
-            self.before_callback(self.state)
-        
-        instruction = self._get_instruction()
-        full_prompt = f"{self.global_instruction}\n\n{instruction}\n\nUser: {user_input}"
-        
-        for chunk in self.llm_provider.stream(full_prompt, temperature=self.temperature):
-            yield chunk
-    
+            # Look for tool name (key can be "tool" or just tool, value must be quoted)
+            tool_match = re.search(r'(?:["\']tool["\']|tool)\s*:\s*["\']([^"\']+)["\']', text, re.IGNORECASE)
+            if tool_match:
+                tool_name = tool_match.group(1)
+                
+                # Look for params block (key "params" or params)
+                params_match = re.search(r'(?:["\']params["\']|params)\s*:\s*(\{.*)', text, re.DOTALL | re.IGNORECASE)
+                if params_match:
+                    params_str_raw = params_match.group(1)
+                    # Try to find the matching closing brace for this params block
+                    # simple counter
+                    p_balance = 0
+                    p_end = 0
+                    for j, ch in enumerate(params_str_raw):
+                        if ch == '{': p_balance += 1
+                        elif ch == '}': p_balance -= 1
+                        
+                        if p_balance == 0:
+                            p_end = j + 1
+                            break
+                    
+                    if p_end > 0:
+                        params_content = params_str_raw[:p_end]
+                        params_data = strict_parse(params_content) or robust_parse(params_content)
+                        if params_data:
+                            return {"tool": tool_name, "params": params_data}
+        except:
+            pass
+            
+        return None
+
     def _extract_code(self, text: str) -> Optional[str]:
-        """Извлечь Python код из markdown блоков"""
-        pattern = r"```python\n(.*?)```"
-        matches = re.findall(pattern, text, re.DOTALL)
-        return matches[0] if matches else None
+        # Deprecated
+        return None
 
 
 class SequentialAgent:

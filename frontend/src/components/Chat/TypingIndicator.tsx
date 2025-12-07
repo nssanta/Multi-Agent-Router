@@ -6,16 +6,33 @@ interface TypingIndicatorProps {
 }
 
 const statusConfig = {
-    thinking: { emoji: '🧠', text: 'Анализирую запрос' },
+    thinking: { emoji: '🧠', text: 'Думаю' },
     searching: { emoji: '🔍', text: 'Ищу информацию' },
-    writing: { emoji: '✍️', text: 'Формирую ответ' },
+    writing: { emoji: '✍️', text: 'Пишу код' },
     processing: { emoji: '⚙️', text: 'Обрабатываю' },
+    running: { emoji: '▶️', text: 'Выполняю инструмент' },
+    retrying: { emoji: '🔄', text: 'Повторяю попытку' },
 };
 
-export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
-    status = 'thinking'
+// Умное определение статуса из текста
+const getStatusFromText = (text: string): keyof typeof statusConfig => {
+    const lower = text.toLowerCase();
+    if (lower.includes('retry') || lower.includes('retrying')) return 'retrying';
+    if (lower.includes('running') || lower.includes('tool') || lower.includes('executing')) return 'running';
+    if (lower.includes('writing') || lower.includes('file')) return 'writing';
+    if (lower.includes('search')) return 'searching';
+    if (lower.includes('processing')) return 'processing';
+    return 'thinking';
+};
+
+export const TypingIndicator: React.FC<TypingIndicatorProps & { customText?: string | null }> = ({
+    status = 'thinking',
+    customText
 }) => {
-    const config = statusConfig[status];
+    // Автоопределение статуса из customText
+    const effectiveStatus = customText ? getStatusFromText(customText) : status;
+    const config = statusConfig[effectiveStatus];
+    const displayText = customText || config.text;
 
     return (
         <div className="flex gap-3">
@@ -35,9 +52,9 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
                     </div>
 
                     {/* Status text */}
-                    <span className="text-sm text-dark-muted">
-                        {config.emoji} {config.text}
-                        <span className="inline-block w-6 text-left typing-dots">...</span>
+                    <span className="text-sm text-dark-muted flex items-center gap-2">
+                        {config.emoji} {displayText}
+                        {!customText && <span className="inline-block w-6 text-left typing-dots">...</span>}
                     </span>
                 </div>
             </div>

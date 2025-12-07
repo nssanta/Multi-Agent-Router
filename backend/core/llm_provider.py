@@ -7,7 +7,7 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterator, Optional, Dict, Any
+from typing import Iterator, Optional, Dict, Any, List
 import os
 import logging
 
@@ -158,22 +158,37 @@ class GeminiProvider(BaseLLMProvider):
     
     def generate(self, prompt: str, **kwargs) -> str:
         temperature = kwargs.get('temperature', 0.7)
-        response = self.model.generate_content(
-            prompt,
-            generation_config={"temperature": temperature}
-        )
-        # usage_metadata доступен в SDK google-generativeai и содержит
-        # prompt_token_count, candidates_token_count, total_token_count
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config={"temperature": temperature}
+            )
+        except Exception as e:
+             logger.error(f"Gemini generation error: {e}")
+             return f"Error: Gemini API generation failed: {e}"
+
+        # usage_metadata доступен в SDK google-generativeai
         usage = getattr(response, "usage_metadata", None)
         usage_dict = None
         if usage is not None:
-            usage_dict = {
+             usage_dict = {
                 "prompt_tokens": getattr(usage, "prompt_token_count", None),
                 "completion_tokens": getattr(usage, "candidates_token_count", None),
                 "total_tokens": getattr(usage, "total_token_count", None),
-            }
+             }
         self._record_usage(usage_dict)
-        return response.text
+        
+        try:
+            return response.text
+        except ValueError:
+            # Если response.text падает, значит контента нет (Safety filter или другое)
+            if response.candidates:
+                finish_reason = response.candidates[0].finish_reason
+                safety_ratings = getattr(response.candidates[0], 'safety_ratings', 'unknown')
+                logger.warning(f"Gemini blocked response. Reason: {finish_reason}, Safety: {safety_ratings}")
+                return f"System Error: Response blocked by safety settings (Reason: {finish_reason}). invalid JSON."
+            
+            return "System Error: Empty response from model."
     
     def stream(self, prompt: str, **kwargs) -> Iterator[str]:
         temperature = kwargs.get('temperature', 0.7)
@@ -185,6 +200,103 @@ class GeminiProvider(BaseLLMProvider):
         for chunk in response:
             if chunk.text:
                 yield chunk.text
+    
+    def generate_with_tools(
+        self, 
+        prompt: str, 
+        tools: List[Dict[str, Any]],
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Генерация с Native Tool Calling (Function Calling)
+        
+        Это гарантирует 100% валидный JSON tool call от модели.
+        
+        Args:
+            prompt: Текст запроса
+            tools: Список определений инструментов в формате:
+                [{"name": "tool_name", "description": "...", "parameters": {...}}]
+            **kwargs: Дополнительные параметры
+            
+        Returns:
+            Dict с:
+            - "text": текстовый ответ (если есть)
+            - "tool_calls": список вызовов инструментов [{name, args}]
+            - "finish_reason": причина завершения
+        """
+        import google.generativeai as genai
+        from google.generativeai.types import FunctionDeclaration, Tool
+        
+        temperature = kwargs.get('temperature', 0.7)
+        
+        # Конвертируем наш формат tools в формат Gemini
+        function_declarations = []
+        for tool_def in tools:
+            func_decl = FunctionDeclaration(
+                name=tool_def["name"],
+                description=tool_def.get("description", ""),
+                parameters=tool_def.get("parameters", {"type": "object", "properties": {}})
+            )
+            function_declarations.append(func_decl)
+        
+        gemini_tools = [Tool(function_declarations=function_declarations)]
+        
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config={"temperature": temperature},
+                tools=gemini_tools
+            )
+            
+            # Record usage
+            usage = getattr(response, "usage_metadata", None)
+            if usage:
+                self._record_usage({
+                    "prompt_tokens": getattr(usage, "prompt_token_count", None),
+                    "completion_tokens": getattr(usage, "candidates_token_count", None),
+                    "total_tokens": getattr(usage, "total_token_count", None),
+                })
+            
+            result = {
+                "text": "",
+                "tool_calls": [],
+                "finish_reason": None
+            }
+            
+            if response.candidates:
+                candidate = response.candidates[0]
+                result["finish_reason"] = str(candidate.finish_reason)
+                
+                # Check for function calls
+                if candidate.content and candidate.content.parts:
+                    for part in candidate.content.parts:
+                        # Text part
+                        if hasattr(part, 'text') and part.text:
+                            result["text"] += part.text
+                        
+                        # Function call part
+                        if hasattr(part, 'function_call') and part.function_call:
+                            fc = part.function_call
+                            # Convert protobuf to dict
+                            args_dict = dict(fc.args) if fc.args else {}
+                            result["tool_calls"].append({
+                                "name": fc.name,
+                                "args": args_dict
+                            })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Gemini generate_with_tools error: {e}")
+            return {
+                "text": f"Error: {e}",
+                "tool_calls": [],
+                "finish_reason": "error"
+            }
+    
+    def supports_native_tools(self) -> bool:
+        """Проверить поддерживает ли провайдер native tool calling"""
+        return True
     
     def generate_with_search(self, prompt: str, **kwargs) -> Dict[str, Any]:
         """
@@ -326,36 +438,80 @@ class OpenRouterProvider(BaseLLMProvider):
         import json
 
         temperature = kwargs.get('temperature', 0.7)
-        response = requests.post(
-            f"{self.base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": temperature,
-                "stream": True
-            },
-            stream=True
-        )
+        retries = 3
+        backoff = 1
         
-        for line in response.iter_lines():
-            if line:
-                line = line.decode('utf-8')
-                if line.startswith('data: '):
-                    data = line[6:]
-                    if data == '[DONE]':
-                        break
+        for attempt in range(retries):
+            try:
+                response = requests.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://github.com/google/deepmind-agent", # OpenRouter best practice
+                        "X-Title": "Agent Framework",
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": temperature,
+                        "stream": True
+                    },
+                    stream=True,
+                    timeout=60
+                )
+                
+                if response.status_code == 429:
+                    if attempt < retries - 1:
+                        import time
+                        wait_time = backoff * (2 ** attempt)
+                        logger.warning(f"Rate limit (429) for {self.model}. Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        raise ValueError(f"OpenRouter Rate Limit (429) exceeded after {retries} attempts.")
+                
+                if response.status_code >= 500:
+                     if attempt < retries - 1:
+                        import time
+                        wait_time = backoff * (2 ** attempt)
+                        logger.warning(f"Server error ({response.status_code}) for {self.model}. Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                
+                if response.status_code != 200:
+                    # Try to read error message
                     try:
-                        chunk = json.loads(data)
-                        if 'choices' in chunk and len(chunk['choices']) > 0:
-                            delta = chunk['choices'][0].get('delta', {})
-                            if 'content' in delta:
-                                yield delta['content']
-                    except json.JSONDecodeError:
-                        pass
+                        error_data = response.json()
+                        error_msg = error_data.get('error', {}).get('message', response.text)
+                    except:
+                        error_msg = response.text
+                    raise ValueError(f"OpenRouter API Error ({response.status_code}): {error_msg}")
+                
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data = line[6:]
+                            if data == '[DONE]':
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                if 'choices' in chunk and len(chunk['choices']) > 0:
+                                    delta = chunk['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        yield delta['content']
+                            except json.JSONDecodeError:
+                                pass
+                return # Success, exit retry loop
+                                
+            except Exception as e:
+                logger.error(f"Stream attempt {attempt+1}/{retries} failed for {self.model}: {e}")
+                if attempt < retries - 1:
+                    import time
+                    time.sleep(backoff * (2 ** attempt))
+                else:
+                    raise e
     
     def generate_with_tools(
         self,
@@ -512,7 +668,14 @@ def get_llm_provider_for_model(model_id: Optional[str] = None) -> BaseLLMProvide
     else:
         model_cfg = models_config.get_model_by_id(model_id)
         if model_cfg is None:
-            raise ValueError(f"Model '{model_id}' not found in models.json")
+            # Fallback for dynamic models (e.g. OpenRouter free list)
+            # If model not found in json, assume it's a dynamic OpenRouter model
+            logger.warning(f"Model '{model_id}' not found in models.json, using dynamic OpenRouter config")
+            model_cfg = {
+                "id": model_id,
+                "provider": "openrouter",
+                "max_context_tokens": 128000 # Default safe limit
+            }
 
     provider_type = (model_cfg.get("provider") or "").lower()
     model_identifier = model_cfg.get("id")

@@ -47,7 +47,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ]);
 
       setSessions(sessionsData.sessions);
-      setAgents(agentsData.agents);
+      // Filter out unwanted agents (DS, MLE) for now
+      const allowedAgents = ['coder', 'dialog'];
+      const filteredAgents = (agentsData.agents || []).filter((a: Agent) => allowedAgents.includes(a.id));
+      setAgents(filteredAgents);
 
       // Объединяем статические модели (Gemini) + динамические free OpenRouter
       const staticModels = (modelsData.models || []).filter((m: ModelInfo) => {
@@ -108,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="w-80 bg-dark-surface border-r border-dark-border flex flex-col">
+    <div className="w-80 bg-dark-surface border-r border-dark-border flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-dark-border">
         <div className="flex items-center justify-between mb-4">

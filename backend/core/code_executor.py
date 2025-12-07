@@ -29,6 +29,11 @@ class LocalCodeExecutor:
         self.logs_path = self.session_path / "logs"
         self.input_path = self.session_path / "input"
         
+        # Логирование для отладки
+        logger.info(f"LocalCodeExecutor initialized:")
+        logger.info(f"  session_path: {self.session_path}")
+        logger.info(f"  workspace_path: {self.workspace_path}")
+        
         # Создать директории
         self.workspace_path.mkdir(parents=True, exist_ok=True)
         self.logs_path.mkdir(parents=True, exist_ok=True)
@@ -103,30 +108,43 @@ class LocalCodeExecutor:
         
         # Сохранить код в файл
         code_file = self.workspace_path / filename
+        logger.info(f"Writing code to: {code_file}")
         code_file.write_text(code, encoding='utf-8')
         
-        # Путь к Python в venv
+        # Путь к Python - сначала пробуем venv, потом системный
         python_path = self.venv_path / "bin" / "python"
         
         if not python_path.exists():
-            error_msg = "Venv not initialized. Call setup_venv() first."
-            logger.error(error_msg)
-            self._log_execution(filename, code, None, error=error_msg)
-            return {
-                "returncode": -1,
-                "stdout": "",
-                "stderr": error_msg,
-                "success": False,
-                "score": None
-            }
+            # Fallback на системный Python
+            import shutil
+            system_python = shutil.which("python3") or shutil.which("python")
+            if system_python:
+                python_path = Path(system_python)
+                logger.info(f"Using system Python: {python_path}")
+            else:
+                error_msg = "Python not found"
+                logger.error(error_msg)
+                self._log_execution(filename, code, None, error=error_msg)
+                return {
+                    "returncode": -1,
+                    "stdout": "",
+                    "stderr": error_msg,
+                    "success": False,
+                    "score": None
+                }
         
         logger.info(f"Executing code file: {filename}")
+        logger.info(f"  code_file (full): {code_file}")
+        logger.info(f"  cwd: {self.workspace_path}")
+        logger.info(f"  python_path: {python_path}")
         start_time = time.time()
         
         try:
             # Запустить код
+            cmd = [str(python_path), str(code_file)]
+            logger.info(f"  Command: {cmd}")
             result = subprocess.run(
-                [str(python_path), str(code_file)],
+                cmd,
                 cwd=str(self.workspace_path),
                 capture_output=True,
                 text=True,

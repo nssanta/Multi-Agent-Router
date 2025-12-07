@@ -185,76 +185,72 @@ def chat(req: ChatRequest):
     session_state = session.get("state", {})
     agent.state.data.update(session_state)
     
-    # Запустить агента С ИСТОРИЕЙ
-    response = agent.run(req.message, history=history)
-
-    # Собрать usage по токенам от провайдера (если поддерживается)
-    cumulative_usage = {}
-    get_usage = getattr(llm_provider, "get_cumulative_usage", None)
-    if callable(get_usage):
+    # Запустить агента С ИСТОРИЕЙ и СТРИМИНГОМ
+    import json
+    
+    async def event_generator():
+        # 1. Stream agent events
+        full_response = ""
         try:
-            cumulative_usage = get_usage() or {}
-        except Exception:
-            cumulative_usage = {}
+            for event in agent.run_stream(req.message, history=history):
+                # Aggregate text for history saving
+                if event["type"] == "token":
+                    full_response += event["content"]
+                
+                # Yield SSE event
+                yield f"data: {json.dumps(event)}\n\n"
+                
+                # Handle system events (Tool Outputs)
+                if event["type"] == "system":
+                     session_manager.add_message(req.session_id, req.agent_type, "system", event["content"])
+                     
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 
-    # Конфигурация модели и лимит контекста
-    model_cfg = models_config.get_model_by_id(model_id) or {"id": model_id}
-    context_limit = models_config.get_max_context_tokens(model_id)
+        # 2. Finalize & Save History
+        session_manager.add_message(req.session_id, req.agent_type, "user", req.message)
+        if full_response.strip():
+            session_manager.add_message(req.session_id, req.agent_type, "assistant", full_response)
+        
+        # 3. Calculate Usage
+        cumulative_usage = {}
+        get_usage = getattr(llm_provider, "get_cumulative_usage", None)
+        if callable(get_usage):
+            try:
+                cumulative_usage = get_usage() or {}
+            except Exception:
+                pass
 
-    # Агрегировать usage на уровне сессии
-    prev_usage = session_state.get("usage") or {}
+        prev_usage = session_state.get("usage") or {}
+        last_p = int(cumulative_usage.get("prompt_tokens") or 0)
+        last_c = int(cumulative_usage.get("completion_tokens") or 0)
+        last_t = int(cumulative_usage.get("total_tokens") or (last_p + last_c))
+        
+        sp = int(prev_usage.get("session_prompt_tokens", 0)) + last_p
+        sc = int(prev_usage.get("session_completion_tokens", 0)) + last_c
+        st = int(prev_usage.get("session_total_tokens", 0)) + last_t
+        
+        new_usage = {
+            "session_prompt_tokens": sp,
+            "session_completion_tokens": sc,
+            "session_total_tokens": st,
+            "context_usage_percent": 0.0 # Simplified for stream
+        }
+        
+        session_manager.update_state(
+            req.session_id,
+            req.agent_type,
+            {
+                "model_id": model_id,
+                "usage": new_usage,
+            },
+        )
+        
+        # Yield usage event
+        yield f"data: {json.dumps({'type': 'usage', 'content': new_usage})}\n\n"
+        yield "data: [DONE]\n\n"
 
-    last_p = int(cumulative_usage.get("prompt_tokens") or 0)
-    last_c = int(cumulative_usage.get("completion_tokens") or 0)
-    last_t = int(cumulative_usage.get("total_tokens") or (last_p + last_c))
-
-    sp = int(prev_usage.get("session_prompt_tokens", 0)) + last_p
-    sc = int(prev_usage.get("session_completion_tokens", 0)) + last_c
-    st = int(prev_usage.get("session_total_tokens", 0)) + last_t
-
-    ctx_used = last_p  # считаем "занято контекста" как токены входа этого запроса
-    ctx_limit = int(context_limit) if context_limit else 0
-    ctx_pct = (ctx_used / ctx_limit * 100.0) if ctx_limit > 0 else 0.0
-
-    new_usage = {
-        "session_prompt_tokens": sp,
-        "session_completion_tokens": sc,
-        "session_total_tokens": st,
-        "last_prompt_tokens": last_p,
-        "last_completion_tokens": last_c,
-        "last_total_tokens": last_t,
-        "context_limit_tokens": ctx_limit,
-        "context_used_tokens": ctx_used,
-        "context_usage_percent": ctx_pct,
-    }
-
-    model_info = {
-        "id": model_cfg.get("id"),
-        "display_name": model_cfg.get("display_name", model_cfg.get("id")),
-        "provider": model_cfg.get("provider"),
-        "max_context_tokens": ctx_limit,
-    }
-
-    # Обновить состояние сессии информацией о usage и модели
-    session_manager.update_state(
-        req.session_id,
-        req.agent_type,
-        {
-            "model_id": model_id,
-            "usage": new_usage,
-            "model_info": model_info,
-        },
-    )
-    
-    # Сохранить в историю
-    session_manager.add_message(req.session_id, req.agent_type, "user", req.message)
-    session_manager.add_message(req.session_id, req.agent_type, "assistant", response)
-    
-    return {
-        "response": response,
-        "usage": new_usage,
-        "model": model_info,
-    }
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/api/models")

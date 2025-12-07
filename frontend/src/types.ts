@@ -80,3 +80,9 @@ export interface CoderConfig {
   use_verifier: boolean;
   verifier_model_id?: string;
 }
+
+export interface ToolCall {
+  tool: string;
+  params: Record<string, any>;
+  result?: any;
+}

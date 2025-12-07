@@ -227,11 +227,75 @@ def create_coder_agent(
         
         return response
     
+    # Tool definitions для Native Tool Calling (Gemini)
+    tool_definitions = [
+        {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given content",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to workspace (e.g., 'main.py', 'src/utils.py')"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The complete content to write to the file"
+                    }
+                },
+                "required": ["path", "content"]
+            }
+        },
+        {
+            "name": "read_file",
+            "description": "Read the content of a file",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path to read"
+                    }
+                },
+                "required": ["path"]
+            }
+        },
+        {
+            "name": "list_directory",
+            "description": "List all files in the workspace directory",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        },
+        {
+            "name": "run_code",
+            "description": "Execute Python code and return the output",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Python code to execute"
+                    }
+                },
+                "required": ["code"]
+            }
+        }
+    ]
+    
+    # Создаём code_executor для выполнения инструментов
+    from backend.core.code_executor import LocalCodeExecutor
+    code_executor = LocalCodeExecutor(session_path=session_path)
+    
     # Создаём агента
     agent = Agent(
         name="coder",
         llm_provider=llm_provider,
         instruction=get_instruction_with_context,
+        tool_definitions=tool_definitions,  # Для native tool calling
+        code_executor=code_executor,  # Для выполнения инструментов
         before_callback=before_run,
         after_callback=after_run,
         temperature=0.5  # Более детерминированный для кода

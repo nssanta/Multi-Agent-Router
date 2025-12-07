@@ -86,22 +86,131 @@ class ApiClient {
     return this.request(`/sessions/${agentType}/${sessionId}/logs`);
   }
 
-  // Chat
+  // Chat Streaming
+  async streamChat(
+    agentType: string,
+    sessionId: string,
+    message: string,
+    searchEnabled: boolean,
+    callbacks: {
+      onToken: (token: string) => void;
+      onStatus: (status: string) => void;
+      onUsage: (usage: any) => void;
+      onComplete: () => void;
+      onError: (error: string) => void;
+    }
+  ): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agent_type: agentType,
+          session_id: sessionId,
+          message,
+          search_enabled: searchEnabled
+        }),
+      });
+
+      if (!response.ok) {
+        // Try to read error body
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is empty');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE events from buffer
+        // Expected format: data: {...}\n\n
+        const lines = buffer.split('\n\n');
+        // Keep the last chunk if it's incomplete
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            if (dataStr === '[DONE]') {
+              continue; // or break?
+            }
+            try {
+              const event = JSON.parse(dataStr);
+              if (event.type === 'token') {
+                callbacks.onToken(event.content);
+              } else if (event.type === 'status') {
+                callbacks.onStatus(event.content);
+              } else if (event.type === 'usage') {
+                callbacks.onUsage(event.content);
+              } else if (event.type === 'error') {
+                callbacks.onError(event.content);
+              } else if (event.type === 'system') {
+                // Format system messages nicely
+                const content = event.content || '';
+
+                // Hide technical errors from user, show friendly messages
+                if (content.includes('Tool execution error') || content.includes('error')) {
+                  // Don't show raw errors - just show status update
+                  callbacks.onStatus('Processing...');
+                } else if (content.includes('written successfully')) {
+                  callbacks.onToken(`\n\n✅ ${content}\n\n`);
+                } else if (content.includes('File Content')) {
+                  // Shorten file content display
+                  const shortContent = content.length > 500
+                    ? content.substring(0, 500) + '\n... (truncated)'
+                    : content;
+                  callbacks.onToken(`\n\n📄 ${shortContent}\n\n`);
+                } else if (content.includes('Directory listing')) {
+                  callbacks.onToken(`\n\n📁 ${content}\n\n`);
+                } else if (content.includes('Execution Result')) {
+                  callbacks.onToken(`\n\n▶️ ${content}\n\n`);
+                } else if (content.includes('not valid JSON')) {
+                  // JSON error - just show status
+                  callbacks.onStatus('Retrying...');
+                } else if (content.includes('Aborting turn')) {
+                  callbacks.onToken(`\n\n⚠️ Agent stopped: too many attempts\n\n`);
+                } else {
+                  // Other system messages - show as-is but formatted
+                  callbacks.onToken(`\n\n🔧 ${content}\n\n`);
+                }
+              } else if (event.type === 'log') {
+                // Only log to console, don't show to user
+                console.log('Agent Log:', event.content);
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE event:', dataStr, e);
+            }
+          }
+        }
+      }
+
+      callbacks.onComplete();
+
+    } catch (error: any) {
+      callbacks.onError(error.message || 'Stream processing failed');
+    }
+  }
+
+  // Legacy Chat (Deprecated, use streamChat)
   async sendMessage(
     agentType: string,
     sessionId: string,
     message: string,
     searchEnabled = true
   ): Promise<ChatResponse> {
-    return this.request('/chat', {
-      method: 'POST',
-      body: JSON.stringify({
-        agent_type: agentType,
-        session_id: sessionId,
-        message,
-        search_enabled: searchEnabled
-      }),
-    });
+    throw new Error("Use streamChat instead");
   }
 
   // File upload

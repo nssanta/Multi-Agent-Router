@@ -20,6 +20,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
   const [lastSearchEnabled, setLastSearchEnabled] = useState<boolean>(true);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [agentStatus, setAgentStatus] = useState<string | null>(null);
 
   // Load session history and reset retry state
   useEffect(() => {
@@ -70,6 +71,92 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
     loadSession();
   }, [sessionId, agentType]);
 
+  const handleStreamCallbacks = (isRetry: boolean) => ({
+    onToken: (token: string) => {
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMsgIndex = newMessages.length - 1;
+        const lastMsg = newMessages[lastMsgIndex];
+
+        if (lastMsg && lastMsg.role === 'assistant') {
+          // Immutable update to prevent Strict Mode duplication
+          newMessages[lastMsgIndex] = {
+            ...lastMsg,
+            content: lastMsg.content + token
+          };
+        }
+        return newMessages;
+      });
+    },
+    onStatus: (status: string) => {
+      setAgentStatus(status);
+    },
+    onUsage: (newUsage: any) => {
+      setUsage(newUsage as ChatUsage);
+    },
+    onComplete: () => {
+      setLoading(false);
+      setIsRetrying(false);
+      setAgentStatus(null);
+      if (isRetry) {
+        // Success! we can clear the error code.
+        // We DO NOT clear lastUserMessage so the user can regenerate again if they want.
+        setLastErrorCode(null);
+      } else {
+        // Normal completion
+        setLastErrorCode(null);
+      }
+    },
+    onError: (err: string) => {
+      console.error("Stream error:", err);
+      // Update last message with error
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMsgIndex = newMessages.length - 1;
+        const lastMsg = newMessages[lastMsgIndex];
+
+        // Format error text
+        const errorText = `\n\n[Error: ${err}]`;
+
+        if (lastMsg && lastMsg.role === 'assistant') {
+          let newContent = lastMsg.content;
+
+          // If content is empty or just "Thinking...", replace it
+          if (lastMsg.content === '' || lastMsg.content === 'Thinking...') {
+            newContent = errorText.trim();
+          } else {
+            newContent += errorText;
+          }
+
+          // Immutable update
+          newMessages[lastMsgIndex] = {
+            ...lastMsg,
+            content: newContent
+          };
+        } else {
+          // Fallback
+          newMessages.push({
+            role: 'assistant',
+            content: errorText,
+            timestamp: new Date().toISOString()
+          });
+        }
+        return newMessages;
+      });
+
+      setLoading(false);
+      setIsRetrying(false);
+      setAgentStatus(null);
+
+      // Always allow retry on error
+      if (err.includes('429') || err.toLowerCase().includes('rate limit')) {
+        setLastErrorCode(429);
+      } else {
+        setLastErrorCode(500);
+      }
+    }
+  });
+
   const handleSend = async (message: string, files?: File[], searchEnabled?: boolean) => {
     if (!sessionId) return;
 
@@ -115,71 +202,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
     setLastSearchEnabled(effectiveSearchEnabled);
     setLastErrorCode(null);
 
-    // Send message to agent
+    // Create placeholder for assistant message
+    const assistantMsg: Message = {
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, assistantMsg]);
+
     setLoading(true);
-    try {
-      const response = await api.sendMessage(agentType, sessionId, finalMessage, effectiveSearchEnabled);
+    setAgentStatus("Thinking...");
 
-      const text = response.response || '';
-      const isRateLimitText =
-        typeof text === 'string' &&
-        text.includes('429') &&
-        text.toLowerCase().includes('too many requests');
-
-      if (response.usage) {
-        setUsage(response.usage);
-      }
-      if (response.model) {
-        setModelInfo(response.model);
-      }
-
-      if (isRateLimitText) {
-        setLastErrorCode(429);
-
-        const errorMsg: Message = {
-          role: 'assistant',
-          content:
-            'Rate limit reached (429 Too Many Requests). You can retry the last message using the retry button below.',
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, errorMsg]);
-      } else {
-        setLastErrorCode(null);
-        setLastUserMessage(null);
-
-        const assistantMsg: Message = {
-          role: 'assistant',
-          content: text,
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, assistantMsg]);
-      }
-    } catch (error: any) {
-      console.error('Send message failed:', error);
-      const status = typeof error?.status === 'number' ? error.status : null;
-
-      if (status === 429) {
-        setLastErrorCode(429);
-
-        const errorMsg: Message = {
-          role: 'assistant',
-          content: 'Rate limit reached (429 Too Many Requests). You can retry the last message using the retry button below.',
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, errorMsg]);
-      } else {
-        setLastErrorCode(status);
-
-        const errorMsg: Message = {
-          role: 'assistant',
-          content: `Error: ${error.message || 'Failed to send message'}`,
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, errorMsg]);
-      }
-    } finally {
-      setLoading(false);
-    }
+    await api.streamChat(
+      agentType,
+      sessionId,
+      finalMessage,
+      effectiveSearchEnabled,
+      handleStreamCallbacks(false)
+    );
   };
 
   const handleRetry = async () => {
@@ -187,107 +227,36 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
 
     setIsRetrying(true);
     setLoading(true);
-    const maxAttempts = 5;
-    const delayMs = 1500;
+    setAgentStatus("Retrying...");
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const response = await api.sendMessage(
-          agentType,
-          sessionId,
-          lastUserMessage,
-          lastSearchEnabled,
-        );
-        const text = response.response || '';
-        const isRateLimitText =
-          typeof text === 'string' &&
-          text.includes('429') &&
-          text.toLowerCase().includes('too many requests');
-
-        if (response.usage) {
-          setUsage(response.usage);
-        }
-        if (response.model) {
-          setModelInfo(response.model);
-        }
-
-        if (isRateLimitText) {
-          // считаем это всё ещё ошибкой 429 и пробуем дальше, не показывая сырое сообщение провайдера
-          setLastErrorCode(429);
-
-          if (attempt === maxAttempts - 1) {
-            const errorMsg: Message = {
-              role: 'assistant',
-              content:
-                'Provider is still rate-limited after several attempts (429). Please try again later or switch the model.',
-              timestamp: new Date().toISOString(),
-            };
-            setMessages(prev => [...prev, errorMsg]);
-          }
-
-          if (attempt < maxAttempts - 1) {
-            await new Promise(res => setTimeout(res, delayMs));
-          }
-        } else {
-          // успешный ответ — удаляем сообщение об ошибке и показываем новый ответ
-          const assistantMsg: Message = {
-            role: 'assistant',
-            content: text,
-            timestamp: new Date().toISOString(),
-          };
-
-          // Удаляем последнее сообщение если оно было об ошибке 429
-          setMessages(prev => {
-            const lastMsg = prev[prev.length - 1];
-            if (lastMsg && lastMsg.role === 'assistant' &&
-              (lastMsg.content.includes('429') ||
-                lastMsg.content.includes('Rate limit') ||
-                lastMsg.content.includes('rate-limited'))) {
-              // Убираем сообщение об ошибке и добавляем успешный ответ
-              return [...prev.slice(0, -1), assistantMsg];
-            }
-            // Просто добавляем ответ
-            return [...prev, assistantMsg];
-          });
-
-          setLastErrorCode(null);
-          setLastUserMessage(null);
-        }
-
-        break;
-      } catch (err: any) {
-        console.error('Retry send failed:', err);
-        const status = typeof err?.status === 'number' ? err.status : null;
-
-        if (status === 429) {
-          setLastErrorCode(429);
-          if (attempt < maxAttempts - 1) {
-            await new Promise(res => setTimeout(res, delayMs));
-            continue;
-          }
-
-          const errorMsg: Message = {
-            role: 'assistant',
-            content: 'Provider is still rate-limited after several attempts (429). Please try again later or switch the model.',
-            timestamp: new Date().toISOString(),
-          };
-          setMessages(prev => [...prev, errorMsg]);
-        } else {
-          setLastErrorCode(status);
-          const errorMsg: Message = {
-            role: 'assistant',
-            content: `Error during retry: ${err?.message || 'Unknown error'}`,
-            timestamp: new Date().toISOString(),
-          };
-          setMessages(prev => [...prev, errorMsg]);
-        }
-
-        break;
+    // Clear previous error content from the LAST message if it looks like an error
+    setMessages(prev => {
+      const newMessages = [...prev];
+      const lastMsg = newMessages[newMessages.length - 1];
+      if (lastMsg && lastMsg.role === 'assistant' && (
+        lastMsg.content.includes('[Error') || lastMsg.content.includes('Rate limit')
+      )) {
+        newMessages[newMessages.length - 1] = {
+          ...lastMsg,
+          content: ''
+        }; // Reset content for reuse
+      } else {
+        // Or add new placeholder if last wasn't assistant?
+        // Usually it is.
       }
-    }
+      return newMessages;
+    });
 
-    setIsRetrying(false);
-    setLoading(false);
+    // Don't reset LastErrorCode yet, wait for success or new error
+    // check if last message exists, if not add it (rare)
+
+    await api.streamChat(
+      agentType,
+      sessionId,
+      lastUserMessage,
+      lastSearchEnabled,
+      handleStreamCallbacks(true)
+    );
   };
 
   if (!sessionId) {
@@ -342,24 +311,37 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ sessionId, agentType }) 
 
       <div className="flex-1 overflow-y-auto p-4">
         <MessageList messages={displayMessages} />
-        {/* Typing Indicator */}
+        {/* Typing Indicator & Status */}
         {loading && (
-          <div className="mt-4">
-            <TypingIndicator status="thinking" />
+          <div className="mt-4 px-4">
+            <div className="flex items-center space-x-3">
+              <TypingIndicator status="thinking" customText={agentStatus} />
+            </div>
           </div>
         )}
       </div>
-      {/* Retry UI - показывать только если есть сообщения и есть ошибка */}
-      {lastErrorCode === 429 && lastUserMessage && messages.length > 0 && (
-        <div className="px-4 py-2 border-t border-dark-border bg-dark-surface flex items-center justify-between text-xs text-dark-muted">
-          <span>⚠️ Лимит запросов достигнут. Попробуйте другую модель или подождите.</span>
-          <button
-            onClick={handleRetry}
-            disabled={isRetrying || loading}
-            className="ml-2 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
-          >
-            {isRetrying ? '...' : '↻ Retry'}
-          </button>
+      {/* Retry / Regenerate UI */}
+      {lastUserMessage && !loading && (
+        <div className={`px-4 py-2 border-t border-dark-border flex items-center justify-between text-xs ${lastErrorCode ? 'bg-red-900/20 text-red-200' : 'bg-dark-surface text-dark-muted'}`}>
+          <span>
+            {lastErrorCode === 429
+              ? '⚠️ Лимит запросов достигнут.'
+              : lastErrorCode
+                ? '⚠️ Ошибка генерации.'
+                : 'Ответ завершен.'}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRetry}
+              disabled={isRetrying || loading}
+              className={`px-3 py-1 rounded-md text-white transition-colors flex items-center gap-1 ${lastErrorCode
+                ? 'bg-red-600 hover:bg-red-500'
+                : 'bg-dark-surface border border-dark-border hover:bg-dark-border text-dark-text'
+                }`}
+            >
+              {lastErrorCode ? '↻ Повторить' : '↻ Перегенерировать'}
+            </button>
+          </div>
         </div>
       )}
       <MessageInput
